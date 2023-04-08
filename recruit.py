@@ -38,20 +38,7 @@ class recruit(commands.Cog):
             self.bot.std.info("Starting reporting")
             self.reporter.start()
 
-    @commands.hybrid_command(name="register", with_app_command=True, description="Register a nation and telegram template")
-    @app_commands.guilds(config.SERVER)
     async def register(self, ctx: commands.Context, nation: str, template: str):
-        await ctx.defer()
-
-        recruit_role = ctx.guild.get_role(config.RECRUIT_ROLE_ID)
-
-        if recruit_role not in ctx.author.roles:
-            await ctx.reply("You need the 'recruiter' role to perform this command")
-            return
-
-        if ctx.channel.id != config.RECRUIT_CHANNEL_ID:
-            await ctx.reply("This command can't be executed in this channel")
-            return
 
         new_user = User(
             ctx.author.id, nation.lower().replace(" ", "_"), template)
@@ -60,35 +47,15 @@ class recruit(commands.Cog):
         self.bot.std.info(
             f"Registering user: {new_user.id} with nation: {new_user.nation} and template: {new_user.template}")
 
-        await ctx.reply("Registration complete!")
+        return True
 
-    @commands.cooldown(1, 80, commands.BucketType.user)
-    @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
-    @app_commands.guilds(config.SERVER)
     async def recruit(self, ctx: commands.Context):
-        await ctx.defer()
-
-        recruit_role = ctx.guild.get_role(config.RECRUIT_ROLE_ID)
-
-        if recruit_role not in ctx.author.roles:
-            await ctx.reply("You need the 'recruiter' role to perform this command")
-            return
-
-        if ctx.channel.id != config.RECRUIT_CHANNEL_ID:
-            await ctx.reply("This command can't be executed in this channel")
-            return
 
         user = self.bot.rusers.get(ctx.author.id)
-
-        if not user:
-            await ctx.reply("You need to register before you can recruit! Use /register")
-            return
-
         nations = self.bot.queue.get_nations()
 
         if not nations:
-            await ctx.reply("There are no nations to recruit at the moment!")
-            return
+            return False
 
         color = int("2d0001", 16)
         embed = discord.Embed(title=f"Recruit", color=color)
@@ -109,31 +76,24 @@ class recruit(commands.Cog):
 
         self.bot.daily.info(f"{user.nation} {len(nations)}")
 
-    @commands.hybrid_command(name="start", with_app_command=True, description="Start newnation polling")
-    @app_commands.guilds(config.SERVER)
-    @commands.has_permissions(administrator=True)
     async def start(self, ctx: commands.Context):
-        await ctx.defer()
 
         if self.newnations_polling.is_running():
-            await ctx.reply("Polling already started.")
+            return False
         else:
             self.bot.std.info(f"Newnations polling initiated by {ctx.author}")
             self.newnations_polling.start()
-            await ctx.reply("Polling started.")
+            return True
 
-    @commands.hybrid_command(name="stop", with_app_command=True, description="Stop newnation polling")
-    @app_commands.guilds(config.SERVER)
-    @commands.has_permissions(administrator=True)
     async def stop(self, ctx: commands.Context):
         await ctx.defer()
 
         if self.newnations_polling.is_running():
             self.bot.std.info(f"Newnations polling stopped by {ctx.author}")
             self.newnations_polling.cancel()
-            await ctx.reply("Polling stopped.")
+            return True
         else:
-            await ctx.reply("Polling already stopped.")
+            return False
 
     @commands.hybrid_command(name="purge", with_app_command=True, description="Clear queue")
     @app_commands.guilds(config.SERVER)
