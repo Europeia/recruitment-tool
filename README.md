@@ -8,3 +8,6 @@
 - touch .env
 - Add the following line to .env:
   - DISCORD_TOKEN = "\<DiscordToken\>"
+
+# Execution
+- python3 main.py
