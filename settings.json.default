@@ -1,0 +1,9 @@
+{
+  "operator": "The United Peoples of Centrism",
+  "guildId": 1084622726800605184,
+  "reportChannelId": 1088812851738722334,
+  "pollingRate": 15,
+  "period": 30,
+  "periodMax": 5,
+  "reportCron": "58 23 * * *"
+}

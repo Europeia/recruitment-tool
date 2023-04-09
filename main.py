@@ -6,7 +6,7 @@ import os
 
 from dotenv import load_dotenv
 
-import config
+from config.config import Config
 from loggers import create_loggers
 from users import Users
 from rqueue import Queue
@@ -39,7 +39,9 @@ class Bot(commands.Bot):
         self.std = std
         self.daily = daily
 
-        self.operator = config.OPERATOR
+        self.config = Config()
+
+        self.operator = self.config.data.operator
 
     async def setup_hook(self):
         await self.load_extension("recruit")
@@ -47,7 +49,7 @@ class Bot(commands.Bot):
 
         # technically syncing in the setup hook isn't a best practice, but I think that
         # it's fine for a small bot like this
-        await self.tree.sync(guild=config.SERVER)
+        await self.tree.sync(guild=self.config.data.guild)
         self.std.info(f"Synced slash commands for {self.user}")
 
     async def on_command_error(self, ctx, error):
@@ -61,7 +63,7 @@ bot = Bot()
 
 
 @bot.hybrid_command(name="reload", with_app_command=True, description="Reload recruitment cog")
-@app_commands.guilds(config.SERVER)
+@app_commands.guilds(bot.config.data.guild)
 @commands.has_permissions(administrator=True)
 async def reload(ctx: commands.Context):
     await ctx.defer()
@@ -73,19 +75,19 @@ async def reload(ctx: commands.Context):
 
 
 @bot.hybrid_command(name="sync", with_app_command=True, description="Sync slash commands")
-@app_commands.guilds(config.SERVER)
+@app_commands.guilds(bot.config.data.guild)
 @commands.has_permissions(administrator=True)
 async def sync(ctx: commands.Context):
     await ctx.defer()
 
-    await bot.tree.sync(guild=config.SERVER)
+    await bot.tree.sync(guild=bot.config.data.guild)
     bot.std.info(f"Synced slash commands for {bot.user}")
 
     await ctx.reply("Done!")
 
 
 @bot.hybrid_command(name="kill", with_app_command=True, description="Put the bot to sleep")
-@app_commands.guilds(config.SERVER)
+@app_commands.guilds(bot.config.data.guild)
 @commands.has_permissions(administrator=True)
 async def kill(ctx: commands.Context):
     await ctx.defer()
