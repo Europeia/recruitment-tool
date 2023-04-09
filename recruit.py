@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from discord import app_commands
 from discord.ext import commands, tasks
 from discord.ui import View
+from main import Bot
 
-import config
 from users import User
 
 
@@ -26,7 +26,9 @@ class RecruitButton(View):
 
 
 class recruit(commands.Cog):
-    def __init__(self, bot):
+    bot: Bot = None
+
+    def __init__(self, bot: Bot):
         self.bot = bot
         self.request_times: list[datetime] = []
 
@@ -39,19 +41,9 @@ class recruit(commands.Cog):
             self.reporter.start()
 
     @commands.hybrid_command(name="register", with_app_command=True, description="Register a nation and telegram template")
-    @app_commands.guilds(config.SERVER)
+    @app_commands.guilds(bot.config.data.guild)
     async def register(self, ctx: commands.Context, nation: str, template: str):
         await ctx.defer()
-
-        recruit_role = ctx.guild.get_role(config.RECRUIT_ROLE_ID)
-
-        if recruit_role not in ctx.author.roles:
-            await ctx.reply("You need the 'recruiter' role to perform this command")
-            return
-
-        if ctx.channel.id != config.RECRUIT_CHANNEL_ID:
-            await ctx.reply("This command can't be executed in this channel")
-            return
 
         new_user = User(
             ctx.author.id, nation.lower().replace(" ", "_"), template)
@@ -64,19 +56,9 @@ class recruit(commands.Cog):
 
     @commands.cooldown(1, 80, commands.BucketType.user)
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
-    @app_commands.guilds(config.SERVER)
+    @app_commands.guilds(bot.config.data.guild)
     async def recruit(self, ctx: commands.Context):
         await ctx.defer()
-
-        recruit_role = ctx.guild.get_role(config.RECRUIT_ROLE_ID)
-
-        if recruit_role not in ctx.author.roles:
-            await ctx.reply("You need the 'recruiter' role to perform this command")
-            return
-
-        if ctx.channel.id != config.RECRUIT_CHANNEL_ID:
-            await ctx.reply("This command can't be executed in this channel")
-            return
 
         user = self.bot.rusers.get(ctx.author.id)
 
@@ -110,7 +92,7 @@ class recruit(commands.Cog):
         self.bot.daily.info(f"{user.nation} {len(nations)}")
 
     @commands.hybrid_command(name="start", with_app_command=True, description="Start newnation polling")
-    @app_commands.guilds(config.SERVER)
+    @app_commands.guilds(bot.config.data.guild)
     @commands.has_permissions(administrator=True)
     async def start(self, ctx: commands.Context):
         await ctx.defer()
@@ -123,7 +105,7 @@ class recruit(commands.Cog):
             await ctx.reply("Polling started.")
 
     @commands.hybrid_command(name="stop", with_app_command=True, description="Stop newnation polling")
-    @app_commands.guilds(config.SERVER)
+    @app_commands.guilds(bot.config.data.guild)
     @commands.has_permissions(administrator=True)
     async def stop(self, ctx: commands.Context):
         await ctx.defer()
@@ -136,7 +118,7 @@ class recruit(commands.Cog):
             await ctx.reply("Polling already stopped.")
 
     @commands.hybrid_command(name="purge", with_app_command=True, description="Clear queue")
-    @app_commands.guilds(config.SERVER)
+    @app_commands.guilds(bot.config.data.guild)
     @commands.has_permissions(administrator=True)
     async def purge(self, ctx: commands.Context):
         await ctx.defer()
@@ -146,19 +128,19 @@ class recruit(commands.Cog):
 
         await ctx.reply("Done.")
 
-    @tasks.loop(seconds=config.POLLING_RATE)
+    @tasks.loop(seconds=bot.config.data.polling_rate)
     async def newnations_polling(self):
         current_time = datetime.now()
 
-        while len(self.request_times) >= config.PERIOD_MAX:
+        while len(self.request_times) >= self.bot.config.data.period_max:
             elapsed = (current_time - self.request_times[0]).total_seconds()
 
-            if elapsed > config.PERIOD:
+            if elapsed > self.bot.config.data.period:
                 del self.request_times[0]
             else:
                 self.bot.std.info(
-                    f"Sleeping for {config.PERIOD - elapsed} seconds")
-                await asyncio.sleep(config.PERIOD - elapsed)
+                    f"Sleeping for {self.bot.config.data.period - elapsed} seconds")
+                await asyncio.sleep(self.bot.config.data.period - elapsed)
 
         self.request_times.append(current_time)
 
@@ -183,10 +165,10 @@ class recruit(commands.Cog):
                 if nation not in current_nations:
                     self.bot.queue.add(nation)
 
-    @tasks.loop(time=config.START_TIME)
+    @tasks.loop(time=bot.config.data.next_report.time)
     async def reporter(self):
         self.bot.std.info("Sending daily report")
-        reports_channel = self.bot.get_channel(config.REPORT_CHANNEL_ID)
+        reports_channel = self.bot.get_channel(self.bot.config.data.report_channel_id)
 
         with open("logs/daily.log", "r") as in_file:
             data = in_file.readlines()
