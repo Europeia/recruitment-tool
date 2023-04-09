@@ -7,4 +7,4 @@
 - mkdir logs
 - touch .env
 - Add the following line to .env:
-  - DISCORD_TOKEN = "<DiscordToken>"
+  - DISCORD_TOKEN = "\<DiscordToken\>"
