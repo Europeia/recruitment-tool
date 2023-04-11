@@ -1,34 +1,20 @@
 import asyncio
-import discord
+
 import requests
 
 from bs4 import BeautifulSoup as bs
-from datetime import datetime, timezone
+from datetime import datetime
 from discord import app_commands
 from discord.ext import commands, tasks
-from discord.ui import View
-from main import Bot
 
-from users import User
-
-
-class RecruitButton(View):
-    def __init__(self):
-        super().__init__()
-
-    async def on_timeout(self):
-        self.value = None
-        for child in self.children:
-            child.disabled = True
-
-        await self.message.edit(view=self)
-        self.stop()
+import config
+from components.users import User
+from components.checks import recruit_command_validated, register_command_validated
+from components.recruitment import get_recruit_embed
 
 
-class recruit(commands.Cog):
-    bot: Bot = None
-
-    def __init__(self, bot: Bot):
+class Recruit(commands.Cog):
+    def __init__(self, bot):
         self.bot = bot
         self.request_times: list[datetime] = []
 
@@ -40,13 +26,16 @@ class recruit(commands.Cog):
             self.bot.std.info("Starting reporting")
             self.reporter.start()
 
-    @commands.hybrid_command(name="register", with_app_command=True, description="Register a nation and telegram template")
-    @app_commands.guilds(bot.config.data.guild)
+    @commands.hybrid_command(name="register", with_app_command=True,
+                             description="Register a nation and telegram template")
+    @app_commands.guilds(config.SERVER)
     async def register(self, ctx: commands.Context, nation: str, template: str):
         await ctx.defer()
 
+        register_command_validated(ctx=ctx)
+
         new_user = User(
-            ctx.author.id, nation.lower().replace(" ", "_"), template)
+            ctx.author.id, nation.lower().replace(" ", "_"), template.replace("%", "%25"))
 
         self.bot.rusers.add(new_user)
         self.bot.std.info(
@@ -54,42 +43,21 @@ class recruit(commands.Cog):
 
         await ctx.reply("Registration complete!")
 
-    @commands.cooldown(1, 80, commands.BucketType.user)
+    @commands.cooldown(1, 40, commands.BucketType.user)
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
     @app_commands.guilds(bot.config.data.guild)
     async def recruit(self, ctx: commands.Context):
         await ctx.defer()
 
-        user = self.bot.rusers.get(ctx.author.id)
+        recruit_command_validated(users=self.bot.rusers, ctx=ctx)
 
-        if not user:
-            await ctx.reply("You need to register before you can recruit! Use /register")
-            return
+        response_tuple = get_recruit_embed(user_id=ctx.author.id, bot=self.bot)
 
-        nations = self.bot.queue.get_nations()
-
-        if not nations:
-            await ctx.reply("There are no nations to recruit at the moment!")
-            return
-
-        color = int("2d0001", 16)
-        embed = discord.Embed(title=f"Recruit", color=color)
-        embed.add_field(name="Nations", value="\n".join(
-            [f"https://www.nationstates.net/nation={nation}" for nation in nations]))
-        embed.add_field(name="Template",
-                        value=f"```{user.template}```", inline=False)
-        embed.set_footer(
-            text=f"Initiated by {ctx.author} at {datetime.now(timezone.utc)}")
-
-        # link buttons can't be created in a subclassed view, so this is basically
-        # an empty view with nothing but an on_timeout method
-        view = RecruitButton()
-        view.add_item(discord.ui.Button(label="Open Telegram", style=discord.ButtonStyle.link,
-                      url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message={user.template}"))
-
-        await ctx.reply(embed=embed, view=view)
-
-        self.bot.daily.info(f"{user.nation} {len(nations)}")
+        if response_tuple:
+            embed, view = response_tuple
+            view.message = await ctx.reply(embed=embed, view=view)
+        else:
+            await ctx.reply("No nations in the queue at the moment!")
 
     @commands.hybrid_command(name="start", with_app_command=True, description="Start newnation polling")
     @app_commands.guilds(bot.config.data.guild)
@@ -150,7 +118,7 @@ class recruit(commands.Cog):
         try:
             self.bot.std.info("Polling NEWNATIONS shard.")
             new_nations = bs(requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations",
-                             headers=headers).text, "xml").NEWNATIONS.text.split(",")
+                                          headers=headers).text, "xml").NEWNATIONS.text.split(",")
         except:
             # certified error handling moment
             self.bot.std.error(
@@ -201,4 +169,4 @@ class recruit(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(recruit(bot))
+    await bot.add_cog(Recruit(bot))

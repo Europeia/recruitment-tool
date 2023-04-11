@@ -1,0 +1,5 @@
+venv/*
+.idea/*
+logs/*
+*.pyc
+*.cpython-311.pyc
