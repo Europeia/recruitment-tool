@@ -32,16 +32,6 @@ class Recruit(commands.Cog):
     async def register(self, ctx: commands.Context, nation: str, template: str):
         await ctx.defer()
 
-        recruit_role = ctx.guild.get_role(config.RECRUIT_ROLE_ID)
-
-        if recruit_role not in ctx.author.roles:
-            await ctx.reply("You need the 'recruiter' role to perform this command")
-            return
-
-        if ctx.channel.id != config.RECRUIT_CHANNEL_ID:
-            await ctx.reply("This command can't be executed in this channel")
-            return
-
         register_command_validated(ctx=ctx)
 
         new_user = User(
