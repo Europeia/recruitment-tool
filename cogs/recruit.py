@@ -1,5 +1,5 @@
 import asyncio
-from functools import wraps
+# from functools import wraps
 
 import requests
 
@@ -15,21 +15,21 @@ from components.checks import recruit_command_validated, register_command_valida
 from components.recruitment import get_recruit_embed
 
 
-def guilds_wrapper(f):
-    @wraps(f)
-    def _impl(self, *method_args, **method_kwargs):
-        print(self)
-        app_commands.guilds(configInstance.data.guild)
-        return f(*method_args, **method_kwargs)
-    return _impl
+# def guilds_wrapper(f):
+#     @wraps(f)
+#     def _impl(self, *method_args, **method_kwargs):
+#         print(self)
+#         app_commands.guilds(configInstance.data.guild)
+#         return f(*method_args, **method_kwargs)
+#     return _impl
 
 
-def loop_rate_wrapper(f):
-    @wraps(f)
-    def _impl(self, *method_args, **method_kwargs):
-        tasks.loop(seconds=configInstance.data.polling_rate)
-        return f(*method_args, **method_kwargs)
-    return _impl
+# def loop_rate_wrapper(f):
+#     @wraps(f)
+#     def _impl(self, *method_args, **method_kwargs):
+#         tasks.loop(seconds=configInstance.data.polling_rate)
+#         return f(*method_args, **method_kwargs)
+#     return _impl
 
 
 class Recruit(commands.Cog):
@@ -58,8 +58,7 @@ class Recruit(commands.Cog):
             ctx.author.id, nation.lower().replace(" ", "_"), template.replace("%", "%25"))
 
         self.bot.rusers.add(new_user)
-        self.bot.std.info(
-            f"Registering user: {new_user.id} with nation: {new_user.nation} and template: {new_user.template}")
+        self.bot.std.info(f"Registering user: {new_user.id} with nation: {new_user.nation} and template: {new_user.template}")
 
         await ctx.reply("Registration complete!")
 
@@ -136,9 +135,9 @@ class Recruit(commands.Cog):
 
         try:
             self.bot.std.info("Polling NEWNATIONS shard.")
-            
+
             new_nations = bs(requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations",
-                             headers=headers).text, "xml").NEWNATIONS.text.split(",") # type: ignore -- BeautifulSoup returns a variant type.
+                             headers=headers).text, "xml").NEWNATIONS.text.split(",")  # type: ignore -- BeautifulSoup returns a variant type.
         except:
             # certified error handling moment
             self.bot.std.error("An unspecified error occured while trying to reach the NS API")
