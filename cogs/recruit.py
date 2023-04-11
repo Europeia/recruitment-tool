@@ -43,7 +43,7 @@ class Recruit(commands.Cog):
 
         await ctx.reply("Registration complete!")
 
-    # @commands.cooldown(1, 35, commands.BucketType.user)
+    @commands.cooldown(1, 35, commands.BucketType.user)
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
     @app_commands.guilds(config.SERVER)
     async def recruit(self, ctx: commands.Context):
