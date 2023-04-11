@@ -25,7 +25,7 @@ class Queue:
 
         resp = [nation.name for nation in self.nations[:8]]
 
-        self.nations = self.nations[9:]
+        self.nations = [nation for nation in self.nations if nation.name not in resp]
 
         return resp
 
@@ -33,7 +33,7 @@ class Queue:
         current_time = datetime.now(timezone.utc)
 
         self.nations = [nation for nation in self.nations if (
-            current_time - nation.time).total_seconds() < PRUNE_TIME]
+                current_time - nation.time).total_seconds() < PRUNE_TIME]
 
     def purge(self):
         self.nations = []
