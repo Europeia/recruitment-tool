@@ -15,7 +15,7 @@ class Base(commands.Cog):
     async def reload(self, ctx: commands.Context, extension: str):
         await ctx.defer()
 
-        if extension not in self.bot.extensions:
+        if extension not in self.bot.default_cogs:
             await ctx.reply("That is not a valid extension.")
             return
 
