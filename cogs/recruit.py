@@ -62,7 +62,7 @@ class Recruit(commands.Cog):
 
         await ctx.reply("Registration complete!")
 
-    @commands.cooldown(1, 40, commands.BucketType.user)
+    @commands.cooldown(1, 35, commands.BucketType.user)
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
     @app_commands.guilds(configInstance.data.guild)
     async def recruit(self, ctx: commands.Context):
@@ -142,13 +142,7 @@ class Recruit(commands.Cog):
             # certified error handling moment
             self.bot.std.error("An unspecified error occured while trying to reach the NS API")
         else:
-            current_nations = [nation.name for nation in self.bot.queue.nations]
-
-            # reverse the list because queue.add prepends to the queue
-            # (so we get most recent nations first)
-            for nation in reversed(new_nations):
-                if nation not in current_nations:
-                    self.bot.queue.add(nation)
+            self.bot.queue.update(new_nations)
 
     @tasks.loop(time=time(hour=23, minute=58))
     async def reporter(self):
