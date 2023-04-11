@@ -2,7 +2,7 @@ import json
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
-from typing import Self
+from typing import Self, List
 
 
 @dataclass
@@ -42,6 +42,9 @@ class Users:
             if user.id == id:
                 return user
         return None
+
+    def ids(self) -> List[int]:
+        return [user.id for user in self.users]
 
     def save(self):
         with open("config.json", "w") as out_file:
