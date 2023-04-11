@@ -16,9 +16,9 @@
 # Installation
 - pip install -r requirements.txt
 - mkdir logs
-- touch .env
-- Add the following line to .env:
-  - DISCORD_TOKEN = "\<DiscordToken\>"
+- create a file called settings.json
+  - Use settings.json.default as a starting point
+  - Fill in correct values for settings.json
 
 # Execution
 - python3 main.py

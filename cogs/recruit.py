@@ -1,20 +1,41 @@
 import asyncio
+from functools import wraps
 
 import requests
 
 from bs4 import BeautifulSoup as bs
-from datetime import datetime
+from datetime import datetime, time
 from discord import app_commands
 from discord.ext import commands, tasks
+from components.bot import RecruitBot
 
-import config
+from components.config.config_manager import configInstance
 from components.users import User
 from components.checks import recruit_command_validated, register_command_validated
 from components.recruitment import get_recruit_embed
 
 
+def guilds_wrapper(f):
+    @wraps(f)
+    def _impl(self, *method_args, **method_kwargs):
+        print(self)
+        app_commands.guilds(configInstance.data.guild)
+        return f(*method_args, **method_kwargs)
+    return _impl
+
+
+def loop_rate_wrapper(f):
+    @wraps(f)
+    def _impl(self, *method_args, **method_kwargs):
+        tasks.loop(seconds=configInstance.data.polling_rate)
+        return f(*method_args, **method_kwargs)
+    return _impl
+
+
 class Recruit(commands.Cog):
-    def __init__(self, bot):
+    bot: RecruitBot
+
+    def __init__(self, bot: RecruitBot):
         self.bot = bot
         self.request_times: list[datetime] = []
 
@@ -26,9 +47,8 @@ class Recruit(commands.Cog):
             self.bot.std.info("Starting reporting")
             self.reporter.start()
 
-    @commands.hybrid_command(name="register", with_app_command=True,
-                             description="Register a nation and telegram template")
-    @app_commands.guilds(config.SERVER)
+    @commands.hybrid_command(name="register", with_app_command=True, description="Register a nation and telegram template")
+    @app_commands.guilds(configInstance.data.guild)
     async def register(self, ctx: commands.Context, nation: str, template: str):
         await ctx.defer()
 
@@ -45,7 +65,7 @@ class Recruit(commands.Cog):
 
     @commands.cooldown(1, 40, commands.BucketType.user)
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
-    @app_commands.guilds(bot.config.data.guild)
+    @app_commands.guilds(configInstance.data.guild)
     async def recruit(self, ctx: commands.Context):
         await ctx.defer()
 
@@ -60,7 +80,7 @@ class Recruit(commands.Cog):
             await ctx.reply("No nations in the queue at the moment!")
 
     @commands.hybrid_command(name="start", with_app_command=True, description="Start newnation polling")
-    @app_commands.guilds(bot.config.data.guild)
+    @app_commands.guilds(configInstance.data.guild)
     @commands.has_permissions(administrator=True)
     async def start(self, ctx: commands.Context):
         await ctx.defer()
@@ -73,7 +93,7 @@ class Recruit(commands.Cog):
             await ctx.reply("Polling started.")
 
     @commands.hybrid_command(name="stop", with_app_command=True, description="Stop newnation polling")
-    @app_commands.guilds(bot.config.data.guild)
+    @app_commands.guilds(configInstance.data.guild)
     @commands.has_permissions(administrator=True)
     async def stop(self, ctx: commands.Context):
         await ctx.defer()
@@ -86,7 +106,7 @@ class Recruit(commands.Cog):
             await ctx.reply("Polling already stopped.")
 
     @commands.hybrid_command(name="purge", with_app_command=True, description="Clear queue")
-    @app_commands.guilds(bot.config.data.guild)
+    @app_commands.guilds(configInstance.data.guild)
     @commands.has_permissions(administrator=True)
     async def purge(self, ctx: commands.Context):
         await ctx.defer()
@@ -96,36 +116,34 @@ class Recruit(commands.Cog):
 
         await ctx.reply("Done.")
 
-    @tasks.loop(seconds=bot.config.data.polling_rate)
+    @tasks.loop(seconds=configInstance.data.polling_rate)
     async def newnations_polling(self):
         current_time = datetime.now()
 
-        while len(self.request_times) >= self.bot.config.data.period_max:
-            elapsed = (current_time - self.request_times[0]).total_seconds()
+        while len(self.request_times) >= configInstance.data.period_max:
+            elapsed = (current_time - self.request_times[0]).total_seconds() # type: ignore
 
-            if elapsed > self.bot.config.data.period:
+            if elapsed > configInstance.data.period:
                 del self.request_times[0]
             else:
                 self.bot.std.info(
-                    f"Sleeping for {self.bot.config.data.period - elapsed} seconds")
-                await asyncio.sleep(self.bot.config.data.period - elapsed)
+                    f"Sleeping for {configInstance.data.period - elapsed} seconds")
+                await asyncio.sleep(configInstance.data.period - elapsed)
 
         self.request_times.append(current_time)
 
         headers = {
-            "User-Agent": f"Euro Recruitment Bot, developed by upcnationstates@gmail.com, used by {self.bot.operator}"}
+            "User-Agent": f"Euro Recruitment Bot, developed by upcnationstates@gmail.com, used by {configInstance.data.operator}"}
 
         try:
             self.bot.std.info("Polling NEWNATIONS shard.")
             new_nations = bs(requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations",
-                                          headers=headers).text, "xml").NEWNATIONS.text.split(",")
+                                          headers=headers).text, "xml").NEWNATIONS.text.split(",")  # type: ignore -- BeautifulSoup returns a variant type.
         except:
             # certified error handling moment
-            self.bot.std.error(
-                "An unspecified error occured while trying to reach the NS API")
+            self.bot.std.error("An unspecified error occured while trying to reach the NS API")
         else:
-            current_nations = [
-                nation.name for nation in self.bot.queue.nations]
+            current_nations = [nation.name for nation in self.bot.queue.nations]
 
             # reverse the list because queue.add prepends to the queue
             # (so we get most recent nations first)
@@ -133,10 +151,10 @@ class Recruit(commands.Cog):
                 if nation not in current_nations:
                     self.bot.queue.add(nation)
 
-    @tasks.loop(time=bot.config.data.next_report.time)
+    @tasks.loop(time=time(hour=23, minute=58))
     async def reporter(self):
         self.bot.std.info("Sending daily report")
-        reports_channel = self.bot.get_channel(self.bot.config.data.report_channel_id)
+        reports_channel = self.bot.get_channel(configInstance.data.report_channel_id)
 
         with open("logs/daily.log", "r") as in_file:
             data = in_file.readlines()
@@ -165,7 +183,8 @@ class Recruit(commands.Cog):
         # date format YYYY-MM-DD
         date = datetime.now().strftime("%Y-%m-%d")
 
-        await reports_channel.send(f"Daily Report: {date}\n```{summary}```")
+        if reports_channel is not None:
+            await reports_channel.send(f"Daily Report: {date}\n```{summary}```")  # type: ignore -- Not sure why Pylance can't see this...
 
 
 async def setup(bot):

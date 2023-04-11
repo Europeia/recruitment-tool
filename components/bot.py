@@ -4,13 +4,18 @@ import discord
 
 from discord.ext import commands
 
-import config
+from components.config.config_manager import configInstance
 from components.loggers import create_loggers
 from components.users import Users
 from components.rqueue import Queue
 
 
 class RecruitBot(commands.Bot):
+    rusers: Users
+    queue: Queue
+    daily: logging.Logger
+    std: logging.Logger
+    
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
@@ -20,14 +25,8 @@ class RecruitBot(commands.Bot):
         # there is already a users prop for the bot obj, so our custom one will be rusers /shrug
         self.rusers = Users().from_file()
         self.queue = Queue()
-
-        # terrible name ik
-        self.daily: logging.Logger
-        self.std: logging.Logger
-
         self.daily, self.std = create_loggers()
-
-        self.operator = config.OPERATOR
+        configInstance.set_logger(self.std)
 
         self.default_cogs = ["base", "error", "recruit"]
 
@@ -41,5 +40,9 @@ class RecruitBot(commands.Bot):
 
         # technically syncing in the setup hook isn't a best practice, but I think that
         # it's fine for a small bot like this
-        await self.tree.sync(guild=config.SERVER)
+        await self.tree.sync(guild=configInstance.data.guild)
         self.std.info(f"Synced slash commands for {self.user}")
+
+    def run(self):
+        super().run(configInstance.data.bot_token)
+        return

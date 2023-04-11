@@ -1,7 +1,10 @@
+from discord import Message
 from discord.ui import View
 
 
 class RecruitView(View):
+    message: Message
+    
     def __init__(self):
         super().__init__()
 

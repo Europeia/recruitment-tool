@@ -1,9 +1,9 @@
 import inspect
 import json
+from logging import Logger
 from os import getcwd, path
 
 from .config_model import ConfigData
-
 
 class ObjectEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -27,44 +27,43 @@ class ObjectEncoder(json.JSONEncoder):
         return obj
 
 
-class Config:
-    _loaded_config = False
-    _data = None
+class ConfigManager:
+    _data: ConfigData
+    _std: Logger
+
+    def __init__(self) -> None:
+        print("INIT")
+        self.readConfig()
+        return
 
     @property
     def data(self) -> ConfigData:
-        if self._data is None and self._loaded_config == False:
-            self.readConfig()
         return self._data
 
-    def readConfig(self):
+    def set_logger(self, logger: Logger) -> None:
+        self._std = logger
+        return
+
+    def readConfig(self) -> None:
+        print("READ")
         try:
-            print(getcwd())
             f = open('settings.json', 'r')
-            print(path.realpath(f.name))
+            open_message = f'Loading settings from: {path.realpath(f.name)}'
+            if hasattr(self, "_std") and self._std is not None:
+                self._std.info(open_message)
+            else:
+                print(open_message)
+
             dict = json.load(f)
-            print(dict)
-            self._data = ConfigData(
-                operator=dict['operator'],
-                guildId=dict['guildId'],
-                reportChannelId=dict['reportChannelId'],
-                pollingRate=dict['pollingRate'],
-                period=dict['period'],
-                periodMax=dict['periodMax'],
-                reportCron=dict['reportCron'])
-            print(self._data)
-            self._loaded_config = True
+            self._data = ConfigData.from_dict(dict)
         except Exception as ex:
-            self._data = None
             print(ex)
         return
 
-    def writeConfig(self):
+    def writeConfig(self) -> None:
         f = open('settings.json', 'w')
         json.dump(self._data, f, cls=ObjectEncoder, indent=2)
         return
 
-    def __init__(self):
-        self._loaded_config = False
-        self._data = None
-        return
+
+configInstance = ConfigManager()
