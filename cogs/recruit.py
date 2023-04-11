@@ -121,13 +121,12 @@ class Recruit(commands.Cog):
         current_time = datetime.now()
 
         while len(self.request_times) >= configInstance.data.period_max:
-            elapsed = (current_time - self.request_times[0]).total_seconds() # type: ignore
+            elapsed = (current_time - self.request_times[0]).total_seconds()  # type: ignore
 
             if elapsed > configInstance.data.period:
                 del self.request_times[0]
             else:
-                self.bot.std.info(
-                    f"Sleeping for {configInstance.data.period - elapsed} seconds")
+                self.bot.std.info(f"Sleeping for {configInstance.data.period - elapsed} seconds")
                 await asyncio.sleep(configInstance.data.period - elapsed)
 
         self.request_times.append(current_time)
@@ -137,8 +136,9 @@ class Recruit(commands.Cog):
 
         try:
             self.bot.std.info("Polling NEWNATIONS shard.")
+            
             new_nations = bs(requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations",
-                                          headers=headers).text, "xml").NEWNATIONS.text.split(",")  # type: ignore -- BeautifulSoup returns a variant type.
+                             headers=headers).text, "xml").NEWNATIONS.text.split(",") # type: ignore -- BeautifulSoup returns a variant type.
         except:
             # certified error handling moment
             self.bot.std.error("An unspecified error occured while trying to reach the NS API")
