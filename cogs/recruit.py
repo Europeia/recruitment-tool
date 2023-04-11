@@ -1,20 +1,16 @@
 import asyncio
-import discord
-import html
+
 import requests
 
 from bs4 import BeautifulSoup as bs
 from datetime import datetime
 from discord import app_commands
 from discord.ext import commands, tasks
-from discord.ui import View
 
 import config
 from components.users import User
 from components.checks import recruit_command_validated, register_command_validated
 from components.recruitment import get_recruit_embed
-
-from components.errors import NotRecruitmentChannel
 
 
 class Recruit(commands.Cog):
@@ -30,17 +26,12 @@ class Recruit(commands.Cog):
             self.bot.std.info("Starting reporting")
             self.reporter.start()
 
-<<<<<<< Updated upstream:recruit.py
-    @commands.hybrid_command(name="register", with_app_command=True, description="Register a nation and telegram template")
-=======
     @commands.hybrid_command(name="register", with_app_command=True,
                              description="Register a nation and telegram template")
->>>>>>> Stashed changes:cogs/recruit.py
     @app_commands.guilds(config.SERVER)
     async def register(self, ctx: commands.Context, nation: str, template: str):
         await ctx.defer()
 
-<<<<<<< Updated upstream:recruit.py
         recruit_role = ctx.guild.get_role(config.RECRUIT_ROLE_ID)
 
         if recruit_role not in ctx.author.roles:
@@ -50,9 +41,8 @@ class Recruit(commands.Cog):
         if ctx.channel.id != config.RECRUIT_CHANNEL_ID:
             await ctx.reply("This command can't be executed in this channel")
             return
-=======
+
         register_command_validated(ctx=ctx)
->>>>>>> Stashed changes:cogs/recruit.py
 
         new_user = User(
             ctx.author.id, nation.lower().replace(" ", "_"), template.replace("%", "%25"))
@@ -63,44 +53,15 @@ class Recruit(commands.Cog):
 
         await ctx.reply("Registration complete!")
 
-<<<<<<< Updated upstream:recruit.py
-    @commands.cooldown(1, 80, commands.BucketType.user)
-=======
     @commands.cooldown(1, 40, commands.BucketType.user)
->>>>>>> Stashed changes:cogs/recruit.py
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
     @app_commands.guilds(config.SERVER)
     async def recruit(self, ctx: commands.Context):
         await ctx.defer()
-<<<<<<< Updated upstream:recruit.py
-
-        recruit_role = ctx.guild.get_role(config.RECRUIT_ROLE_ID)
-
-        if recruit_role not in ctx.author.roles:
-            await ctx.reply("You need the 'recruiter' role to perform this command")
-            return
-
-        if ctx.channel.id != config.RECRUIT_CHANNEL_ID:
-            await ctx.reply("This command can't be executed in this channel")
-            return
-
-        user = self.bot.rusers.get(ctx.author.id)
-
-        if not user:
-            await ctx.reply("You need to register before you can recruit! Use /register")
-            return
-
-        nations = self.bot.queue.get_nations()
-
-        if not nations:
-            await ctx.reply("There are no nations to recruit at the moment!")
-            return
-=======
 
         recruit_command_validated(users=self.bot.rusers, ctx=ctx)
 
         response_tuple = get_recruit_embed(user_id=ctx.author.id, bot=self.bot)
->>>>>>> Stashed changes:cogs/recruit.py
 
         if response_tuple:
             embed, view = response_tuple
