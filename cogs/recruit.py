@@ -55,7 +55,7 @@ class Recruit(commands.Cog):
 
         if response_tuple:
             embed, view = response_tuple
-            await ctx.reply(embed=embed, view=view)
+            view.message = await ctx.reply(embed=embed, view=view)
         else:
             await ctx.reply("No nations in the queue at the moment!")
 
