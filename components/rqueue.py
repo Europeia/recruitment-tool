@@ -19,9 +19,11 @@ class Queue:
 
     def update(self, new_nations: List[str]):
         for idx, nation in enumerate(self.nations):
-            if nation.recruited and nation.name in new_nations:
-                self.nations[idx] = Nation(name=nation.name, recruited=self.nations[idx].recruited)
+            if nation.name in new_nations:
                 new_nations.remove(nation.name)
+
+                if nation.recruited:
+                    self.nations[idx] = Nation(name=nation.name, recruited=True)
 
         for nation_name in reversed(new_nations):
             nation = Nation(nation_name)

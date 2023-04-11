@@ -55,7 +55,7 @@ class Recruit(commands.Cog):
         register_command_validated(ctx=ctx)
 
         new_user = User(
-            ctx.author.id, nation.lower().replace(" ", "_"), template.replace("%", "%25"))
+            ctx.author.id, nation.lower().replace(" ", "_"), template.replace("%", ""))
 
         self.bot.rusers.add(new_user)
         self.bot.std.info(f"Registering user: {new_user.id} with nation: {new_user.nation} and template: {new_user.template}")
