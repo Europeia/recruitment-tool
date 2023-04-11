@@ -19,7 +19,7 @@ class Base(commands.Cog):
             await ctx.reply("That is not a valid extension.")
             return
 
-        await self.bot.reload_extension(extension)
+        await self.bot.reload_extension(f"cogs.{extension}")
         self.bot.std.info(f"Reloaded {extension} cog")
 
         await ctx.reply("Reloaded cog!")

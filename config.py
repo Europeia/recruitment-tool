@@ -7,6 +7,8 @@ OPERATOR = "The United Peoples of Centrism"
 SERVER = discord.Object(id=1084622726800605184)
 # the role ID for the recruitment role
 RECRUIT_ROLE_ID = 1088807857442537654
+# the channel ID for the recruitment channel
+RECRUIT_CHANNEL_ID = 1088808524932452393
 # the channel ID for the reports channel
 REPORT_CHANNEL_ID = 1088812851738722334
 # the rate at which the bot will poll the NEWNATIONS API shard (in seconds)
