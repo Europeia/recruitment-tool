@@ -10,6 +10,11 @@ from components.views import RecruitView
 def get_recruit_embed(user_id: int, bot: RecruitBot) -> Optional[Tuple[discord.Embed, RecruitView]]:
     user = bot.rusers.get(user_id)
 
+    # this will never happen because we validate that the user exists in the command,
+    # but my IDE is complaining without it
+    if not user:
+        return None
+
     nations = bot.queue.get_nations()
 
     if not nations:
@@ -28,7 +33,7 @@ def get_recruit_embed(user_id: int, bot: RecruitBot) -> Optional[Tuple[discord.E
     # an empty view with nothing but an on_timeout method
     view = RecruitView()
     view.add_item(discord.ui.Button(label="Open Telegram", style=discord.ButtonStyle.link,
-                                    url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message={user.template}"))
+                                    url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{user.template}%25"))
 
     bot.daily.info(f"{user.nation} {len(nations)}")
 
