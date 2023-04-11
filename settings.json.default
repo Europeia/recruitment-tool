@@ -1,0 +1,11 @@
+{
+  "operator": "The United Peoples of Centrism",
+  "guildId": 0,
+  "reportChannelId": 0,
+  "recruitChannelId": 0,
+  "recruitRoleId": 0,
+  "pollingRate": 15,
+  "period": 30,
+  "periodMax": 5,
+  "botToken": "<Discord Bot Token>"
+}

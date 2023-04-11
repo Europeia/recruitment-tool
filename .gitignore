@@ -103,4 +103,5 @@ ENV/
 
 # Other stuff
 logs/*
-
+settings.json
+config.json

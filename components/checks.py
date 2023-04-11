@@ -1,6 +1,6 @@
 from discord.ext import commands
 
-import config
+from components.config.config_manager import configInstance
 from components.users import Users
 from components.errors import NotRegistered, NotRecruiter, NotRecruitmentChannel
 
@@ -14,21 +14,21 @@ def recruit_command_validated(users: Users, ctx: commands.Context) -> bool:
 
 
 def in_recruit_channel(ctx: commands.Context) -> bool:
-    if ctx.channel.id != config.RECRUIT_CHANNEL_ID:
-        raise NotRecruitmentChannel(ctx.author)
+    if ctx.channel.id != configInstance.data.recruit_channel_id:
+        raise NotRecruitmentChannel(ctx.author) # type: ignore
     else:
         return True
 
 
 def is_registered(users: Users, ctx: commands.Context) -> bool:
     if not users.get(ctx.author.id):
-        raise NotRegistered(ctx.author)
+        raise NotRegistered(ctx.author) # type: ignore
     else:
         return True
 
 
 def is_recruiter(ctx: commands.Context) -> bool:
-    if ctx.guild.get_role(config.RECRUIT_ROLE_ID) not in ctx.author.roles:
-        raise NotRecruiter(ctx.author)
+    if ctx.guild.get_role(configInstance.data.recruit_role_id) not in ctx.author.roles: # type: ignore
+        raise NotRecruiter(ctx.author) # type: ignore
     else:
         return True
