@@ -81,6 +81,10 @@ class Sessions(commands.Cog):
         session = Session(ctx, interval, True, self.bot)
         self.sessions.update({ctx.author.id, session})
 
+        # Start the session
+        await asyncio.sleep(5)
+        session.work()
+
     @commands.hybrid_command(name="stop", with_app_command=True, description="End your recruitment session")
     async def stop(self, ctx: commands.Context):
 
