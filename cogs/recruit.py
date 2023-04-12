@@ -12,7 +12,7 @@ from components.bot import RecruitBot
 from components.config.config_manager import configInstance
 from components.users import User
 from components.checks import recruit_command_validated, register_command_validated
-from components.recruitment import get_recruit_embed
+from components.recruitment import get_recruit_embed, recruit
 
 
 # def guilds_wrapper(f):
@@ -70,12 +70,7 @@ class Recruit(commands.Cog):
 
         recruit_command_validated(users=self.bot.rusers, ctx=ctx)
 
-        response_tuple = get_recruit_embed(user_id=ctx.author.id, bot=self.bot)
-
-        if response_tuple:
-            embed, view = response_tuple
-            view.message = await ctx.reply(embed=embed, view=view)
-        else:
+        if not recruit(ctx, self.bot):
             await ctx.reply("No nations in the queue at the moment!")
 
     @commands.hybrid_command(name="polling", with_app_command=True, description="Start or stop newnation polling")
