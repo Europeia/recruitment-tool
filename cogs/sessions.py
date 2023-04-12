@@ -21,6 +21,7 @@ class Session:
     def work(self):
         if self.active:
             recruit(self.ctx, self.bot)
+        # else: TODO end the loop if false
 
 
 class SessionsCog(commands.Cog):
