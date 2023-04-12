@@ -23,6 +23,7 @@ class Session:
         # (half of interval, but min 30s / max 5m)
         self.short_interval = max(300, min(30, self.interval / 2))
         self.acknowledged = False
+        self.last_batch = []
         self.generate_custom_id()
 
     # Create a unique ID for this session's acknowledge buttons
@@ -44,9 +45,11 @@ class Session:
         self.acknowledged = False
         # If session is still active
         if self.active:
-            # Successfully generate a batch, wait for acknowledgement + interval
-            if recruit(self.ctx, self.bot):
-                await self.bot.wait_for('interaction', check=lambda interaction: interaction.data["component_type"] == 2 and self.custom_id in interaction.data.keys())
+            batch = recruit(self.ctx, self.bot, self)
+            # Successfully generated a batch, wait for acknowledgement + interval
+            if batch:
+                self.last_batch = batch
+                await self.bot.wait_for('interaction', check=lambda interaction: interaction.data["component_type"] == 2 and (self.custom_id + "ack") in interaction.data.keys())
                 self.acknowledged = True
                 await asyncio.sleep(self.interval)
             # No batch generated, do a short wait
@@ -64,12 +67,16 @@ class Session:
             if not self.was_acknowledged(60):
                 self.cancel_last()
 
+    # Wait the specified delay, then check if acknowledged
     def was_acknowledged(self, delay: int):
         await asyncio.sleep(delay)
         return self.acknowledged
 
+    # Unrecruit the last batch
     def cancel_last(self):
-        # TODO implement cancellation logic
+        self.bot.queue.unrecruit(self.last_batch)
+        await self.ctx.reply(f"Hey {self.ctx.author.mention}, your batch has been cancelled.")
+
 
 class Sessions(commands.Cog):
     bot: RecruitBot

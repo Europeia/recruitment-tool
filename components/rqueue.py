@@ -12,6 +12,9 @@ class Nation:
     time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     recruited: bool = False
 
+    def calculate_age(self, now: int = datetime.now(timezone.utc)):
+        return (now - self.time).total_seconds()
+
 
 @dataclass
 class Queue:
@@ -42,10 +45,19 @@ class Queue:
         return resp
 
     def prune(self):
-        current_time = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
 
         self.nations = [nation for nation in self.nations if (not nation.recruited and (
-            current_time - nation.time).total_seconds() < PRUNE_TIME) or (nation.recruited and (current_time - nation.time).total_seconds() < 30)]
+            nation.calculate_age(now) < PRUNE_TIME) or (nation.recruited and nation.calculate_age(now) < 30))]
+
 
     def purge(self):
         self.nations = []
+
+    def unrecruit(self, batch: list[Nation]):
+        # Mark the nations as unrecruited
+        for nat in batch:
+            nat.recruited = False
+            # Unprune the nation if necessary
+            if nat.calculate_age() > PRUNE_TIME:
+                self.nations.append(nat)
