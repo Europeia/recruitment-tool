@@ -40,8 +40,6 @@ class Session:
             await asyncio.sleep(delay)
             self.work()
 
-        # else: TODO end the loop if false
-
 
 class Sessions(commands.Cog):
     bot: RecruitBot
