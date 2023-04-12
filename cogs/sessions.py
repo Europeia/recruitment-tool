@@ -24,7 +24,7 @@ class Session:
         # else: TODO end the loop if false
 
 
-class SessionsCog(commands.Cog):
+class Sessions(commands.Cog):
     bot: RecruitBot
 
     def __init__(self, bot: RecruitBot):
