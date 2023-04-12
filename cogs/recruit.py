@@ -78,31 +78,31 @@ class Recruit(commands.Cog):
         else:
             await ctx.reply("No nations in the queue at the moment!")
 
-    @commands.hybrid_command(name="start", with_app_command=True, description="Start newnation polling")
+    @commands.hybrid_command(name="polling", with_app_command=True, description="Start or stop newnation polling")
     @app_commands.guilds(configInstance.data.guild)
     @commands.has_permissions(administrator=True)
-    async def start(self, ctx: commands.Context):
+    async def polling(self, ctx: commands.Context, mode: str):
         await ctx.defer()
+        mode = mode.lower()
 
-        if self.newnations_polling.is_running():
-            await ctx.reply("Polling already started.")
+        if mode == "start" or mode == "begin":
+            if self.newnations_polling.is_running():
+                await ctx.reply("Polling already started.")
+            else:
+                self.bot.std.info(f"Newnations polling initiated by {ctx.author}")
+                self.newnations_polling.start()
+                await ctx.reply("Polling started.")
+
+        if mode == "stop" or mode == "end":
+            if self.newnations_polling.is_running():
+                self.bot.std.info(f"Newnations polling stopped by {ctx.author}")
+                self.newnations_polling.cancel()
+                await ctx.reply("Polling stopped.")
+            else:
+                await ctx.reply("Polling already stopped.")
+
         else:
-            self.bot.std.info(f"Newnations polling initiated by {ctx.author}")
-            self.newnations_polling.start()
-            await ctx.reply("Polling started.")
-
-    @commands.hybrid_command(name="stop", with_app_command=True, description="Stop newnation polling")
-    @app_commands.guilds(configInstance.data.guild)
-    @commands.has_permissions(administrator=True)
-    async def stop(self, ctx: commands.Context):
-        await ctx.defer()
-
-        if self.newnations_polling.is_running():
-            self.bot.std.info(f"Newnations polling stopped by {ctx.author}")
-            self.newnations_polling.cancel()
-            await ctx.reply("Polling stopped.")
-        else:
-            await ctx.reply("Polling already stopped.")
+            await ctx.reply("Invalid mode. Please enter START or STOP.")
 
     @commands.hybrid_command(name="purge", with_app_command=True, description="Clear queue")
     @app_commands.guilds(configInstance.data.guild)
