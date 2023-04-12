@@ -3,9 +3,20 @@ import discord
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
+from discord.app_commands import commands
+
 from components.bot import RecruitBot
 from components.views import RecruitView
 
+def recruit(ctx: commands.Context, bot: RecruitBot):
+    response_tuple = get_recruit_embed(user_id=ctx.author.id, bot=bot)
+
+    if response_tuple:
+        embed, view = response_tuple
+        view.message = await ctx.reply(embed=embed, view=view)
+        return True
+    else:
+        return False
 
 def get_recruit_embed(user_id: int, bot: RecruitBot) -> Optional[Tuple[discord.Embed, RecruitView]]:
     user = bot.rusers.get(user_id)

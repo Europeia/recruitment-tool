@@ -28,7 +28,7 @@ class RecruitBot(commands.Bot):
         self.daily, self.std = create_loggers()
         configInstance.set_logger(self.std)
 
-        self.default_cogs = ["base", "error", "recruit"]
+        self.default_cogs = ["base", "error", "recruit", "session"]
 
     async def setup_hook(self):
         # await self.load_extension("recruit")

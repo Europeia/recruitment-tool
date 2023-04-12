@@ -12,7 +12,7 @@ from components.bot import RecruitBot
 from components.config.config_manager import configInstance
 from components.users import User
 from components.checks import recruit_command_validated, register_command_validated
-from components.recruitment import get_recruit_embed
+from components.recruitment import get_recruit_embed, recruit
 
 
 # def guilds_wrapper(f):
@@ -70,39 +70,34 @@ class Recruit(commands.Cog):
 
         recruit_command_validated(users=self.bot.rusers, ctx=ctx)
 
-        response_tuple = get_recruit_embed(user_id=ctx.author.id, bot=self.bot)
-
-        if response_tuple:
-            embed, view = response_tuple
-            view.message = await ctx.reply(embed=embed, view=view)
-        else:
+        if not recruit(ctx, self.bot):
             await ctx.reply("No nations in the queue at the moment!")
 
-    @commands.hybrid_command(name="start", with_app_command=True, description="Start newnation polling")
+    @commands.hybrid_command(name="polling", with_app_command=True, description="Start or stop newnation polling")
     @app_commands.guilds(configInstance.data.guild)
     @commands.has_permissions(administrator=True)
-    async def start(self, ctx: commands.Context):
+    async def polling(self, ctx: commands.Context, mode: str):
         await ctx.defer()
+        mode = mode.lower()
 
-        if self.newnations_polling.is_running():
-            await ctx.reply("Polling already started.")
+        if mode == "start" or mode == "begin":
+            if self.newnations_polling.is_running():
+                await ctx.reply("Polling already started.")
+            else:
+                self.bot.std.info(f"Newnations polling initiated by {ctx.author}")
+                self.newnations_polling.start()
+                await ctx.reply("Polling started.")
+
+        if mode == "stop" or mode == "end":
+            if self.newnations_polling.is_running():
+                self.bot.std.info(f"Newnations polling stopped by {ctx.author}")
+                self.newnations_polling.cancel()
+                await ctx.reply("Polling stopped.")
+            else:
+                await ctx.reply("Polling already stopped.")
+
         else:
-            self.bot.std.info(f"Newnations polling initiated by {ctx.author}")
-            self.newnations_polling.start()
-            await ctx.reply("Polling started.")
-
-    @commands.hybrid_command(name="stop", with_app_command=True, description="Stop newnation polling")
-    @app_commands.guilds(configInstance.data.guild)
-    @commands.has_permissions(administrator=True)
-    async def stop(self, ctx: commands.Context):
-        await ctx.defer()
-
-        if self.newnations_polling.is_running():
-            self.bot.std.info(f"Newnations polling stopped by {ctx.author}")
-            self.newnations_polling.cancel()
-            await ctx.reply("Polling stopped.")
-        else:
-            await ctx.reply("Polling already stopped.")
+            await ctx.reply("Invalid mode. Please enter START or STOP.")
 
     @commands.hybrid_command(name="purge", with_app_command=True, description="Clear queue")
     @app_commands.guilds(configInstance.data.guild)
