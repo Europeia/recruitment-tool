@@ -22,7 +22,7 @@ class Session:
         # Define the period to wait if a batch fails
         # (half of interval, but min 30s / max 5m)
         self.short_interval = max(300, min(30, self.interval / 2))
-
+        self.acknowledged = False
         self.generate_custom_id()
 
     # Create a unique ID for this session's acknowledge buttons
@@ -41,11 +41,13 @@ class Session:
 
     # Generate a batch
     async def work(self):
+        self.acknowledged = False
         # If session is still active
         if self.active:
             # Successfully generate a batch, wait for acknowledgement + interval
             if recruit(self.ctx, self.bot):
                 await self.bot.wait_for('interaction', check=lambda interaction: interaction.data["component_type"] == 2 and self.custom_id in interaction.data.keys())
+                self.acknowledged = True
                 await asyncio.sleep(self.interval)
             # No batch generated, do a short wait
             else:
@@ -54,6 +56,20 @@ class Session:
             # Finally, run next batch
             self.work()
 
+    # Wait 60 seconds then send reminder, wait 60 seconds after that then cancel
+    async def followup(self):
+        if not self.was_acknowledged(60):
+            await self.ctx.reply(f"Hey {self.ctx.author.mention}, you have a batch waiting for you above!")
+
+            if not self.was_acknowledged(60):
+                self.cancel_last()
+
+    def was_acknowledged(self, delay: int):
+        await asyncio.sleep(delay)
+        return self.acknowledged
+
+    def cancel_last(self):
+        # TODO implement cancellation logic
 
 class Sessions(commands.Cog):
     bot: RecruitBot
