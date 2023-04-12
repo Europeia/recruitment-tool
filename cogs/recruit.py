@@ -6,6 +6,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 from datetime import datetime, time
 from discord import app_commands
+from discord.app_commands import Choice
 from discord.ext import commands, tasks
 from components.bot import RecruitBot
 
@@ -78,31 +79,32 @@ class Recruit(commands.Cog):
         else:
             await ctx.reply("No nations in the queue at the moment!")
 
-    @commands.hybrid_command(name="start", with_app_command=True, description="Start newnation polling")
+    @commands.hybrid_command(name="polling", with_app_command=True, description="Start or stop newnation polling")
     @app_commands.guilds(configInstance.data.guild)
     @commands.has_permissions(administrator=True)
-    async def start(self, ctx: commands.Context):
+    @app_commands.choices(
+        action=[
+            Choice(name="start", value="start"),
+            Choice(name="stop", value="stop")
+        ]
+    )
+    async def polling(self, ctx: commands.Context, action: str):
         await ctx.defer()
 
-        if self.newnations_polling.is_running():
-            await ctx.reply("Polling already started.")
-        else:
-            self.bot.std.info(f"Newnations polling initiated by {ctx.author}")
-            self.newnations_polling.start()
-            await ctx.reply("Polling started.")
-
-    @commands.hybrid_command(name="stop", with_app_command=True, description="Stop newnation polling")
-    @app_commands.guilds(configInstance.data.guild)
-    @commands.has_permissions(administrator=True)
-    async def stop(self, ctx: commands.Context):
-        await ctx.defer()
-
-        if self.newnations_polling.is_running():
-            self.bot.std.info(f"Newnations polling stopped by {ctx.author}")
-            self.newnations_polling.cancel()
-            await ctx.reply("Polling stopped.")
-        else:
-            await ctx.reply("Polling already stopped.")
+        if action == "start":
+            if self.newnations_polling.is_running():
+                await ctx.reply("Polling already started.")
+            else:
+                self.bot.std.info(f"Newnations polling initiated by {ctx.author}")
+                self.newnations_polling.start()
+                await ctx.reply("Polling started.")
+        elif action == "stop":
+            if not self.newnations_polling.is_running():
+                await ctx.reply("Polling already stopped.")
+            else:
+                self.bot.std.info(f"Newnations polling stopped by {ctx.author}")
+                self.newnations_polling.cancel()
+                await ctx.reply("Polling stopped.")
 
     @commands.hybrid_command(name="purge", with_app_command=True, description="Clear queue")
     @app_commands.guilds(configInstance.data.guild)
