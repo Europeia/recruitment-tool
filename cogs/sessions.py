@@ -1,3 +1,4 @@
+import asyncio
 from asyncio import tasks
 
 from dateutil import parser as timeinput
@@ -17,10 +18,28 @@ class Session:
     active: bool
     bot: RecruitBot
 
-    @tasks.loop(seconds=interval)
+    def __init__(self):
+        # Define the period to wait if a batch fails
+        # (half of interval, but min 30s / max 5m)
+        self.short_interval = max(300, min(30, self.interval / 2))
+
     def work(self):
+
+        # If session is still active
         if self.active:
-            recruit(self.ctx, self.bot)
+            delay = 0
+
+            # Successfully generated a batch
+            if recruit(self.ctx, self.bot):
+                delay = self.interval
+            # No batch generated
+            else:
+                delay = self.short_interval
+
+            # Schedule next batch
+            await asyncio.sleep(delay)
+            self.work()
+
         # else: TODO end the loop if false
 
 
