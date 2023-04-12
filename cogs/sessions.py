@@ -1,5 +1,5 @@
 import asyncio
-from asyncio import tasks
+from random import random
 
 from dateutil import parser as timeinput
 from dateutil.parser import ParserError
@@ -23,21 +23,35 @@ class Session:
         # (half of interval, but min 30s / max 5m)
         self.short_interval = max(300, min(30, self.interval / 2))
 
-    def work(self):
+        self.generate_custom_id()
 
+    # Create a unique ID for this session's acknowledge buttons
+    def generate_custom_id(self):
+        name = self.ctx.author.id.lower()[0:4]
+        rand = random.randint(1000, 9999)
+        new_id = name + rand
+
+        # Don't allow two in a row
+        if new_id == self.custom_id:
+            return self.generate_custom_id()
+
+        # Pass result
+        self.custom_id = new_id
+        return self.custom_id
+
+    # Generate a batch
+    async def work(self):
         # If session is still active
         if self.active:
-            delay = 0
-
-            # Successfully generated a batch
+            # Successfully generate a batch, wait for acknowledgement + interval
             if recruit(self.ctx, self.bot):
-                delay = self.interval
-            # No batch generated
+                await self.bot.wait_for('interaction', check=lambda interaction: interaction.data["component_type"] == 2 and self.custom_id in interaction.data.keys())
+                await asyncio.sleep(self.interval)
+            # No batch generated, do a short wait
             else:
-                delay = self.short_interval
+                await asyncio.sleep(self.short_interval)
 
-            # Schedule next batch
-            await asyncio.sleep(delay)
+            # Finally, run next batch
             self.work()
 
 
