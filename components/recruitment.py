@@ -27,7 +27,7 @@ def get_recruit_embed(user_id: int, bot: RecruitBot) -> Optional[Tuple[discord.E
     embed.add_field(name="Template",
                     value=f"```{user.template}```", inline=False)
     embed.set_footer(
-        text=f"Initiated by {user.nation} at {datetime.now(timezone.utc)}")
+        text=f"Initiated by {user.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
 
     # link buttons can't be created in a subclassed view, so this is basically
     # an empty view with nothing but an on_timeout method
