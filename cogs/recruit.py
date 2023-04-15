@@ -4,7 +4,9 @@ import asyncio
 import requests
 
 from bs4 import BeautifulSoup as bs
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
+from dateutil import parser as timeinput
+from dateutil.parser import ParserError
 from discord import app_commands
 from discord.app_commands import Choice
 from discord.ext import commands, tasks
@@ -13,7 +15,7 @@ from components.bot import RecruitBot
 from components.config.config_manager import configInstance
 from components.users import User
 from components.checks import recruit_command_validated, register_command_validated
-from components.recruitment import get_recruit_embed
+from components.recruitment import get_recruit_embed, recruit
 
 
 # def guilds_wrapper(f):
@@ -63,6 +65,34 @@ class Recruit(commands.Cog):
 
         await ctx.reply("Registration complete!")
 
+    @commands.hybrid_command(name="remindme", with_app_command=True, description="Define your reminder interval.")
+    @app_commands.guilds(configInstance.data.guild)
+    async def remindme(self, ctx: commands.Context, timing: str):
+        await ctx.defer()
+
+        recruit_command_validated(users=self.bot.rusers, ctx=ctx)
+
+        # Convert user input to a number of seconds
+        interval = None
+        # Just a number, assume it's seconds
+        if timing.isnumeric():
+            interval = timing
+        # A string, try to parse it
+        else:
+            try:
+                time = timeinput.parse(timing)
+                interval = (time.day * 86400) + (time.hour * 3600) + (time.minute * 60) + (time.second)
+            # Exceptions on timeinput.parse
+            except ParserError:
+                await ctx.reply("Invalid reminder interval. Please try again.")
+            except OverflowError:
+                await ctx.reply("Your reminder interval broke the computer. Nice job.")
+
+        # Find & update the user object
+        user = self.bot.rusers.get(ctx.author.id)
+        user.remind = interval
+
+
     @commands.cooldown(1, 35, commands.BucketType.user)
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
     @app_commands.guilds(configInstance.data.guild)
@@ -71,13 +101,26 @@ class Recruit(commands.Cog):
 
         recruit_command_validated(users=self.bot.rusers, ctx=ctx)
 
-        response_tuple = get_recruit_embed(user_id=ctx.author.id, bot=self.bot)
+        user = self.bot.rusers.get(ctx.author.id)
+
+        response_tuple = recruit(user=user, ctx=ctx, bot=self.bot)
 
         if response_tuple:
             embed, view = response_tuple
             view.message = await ctx.reply(embed=embed, view=view)
         else:
             await ctx.reply("No nations in the queue at the moment!")
+
+        self.remind(ctx, user)
+
+    async def remind(self, ctx: commands.Context, user: User):
+        await asyncio.sleep(user.remind)
+
+        # TODO: how should we allow the user to cancel a reminder?
+
+        if (time.time - user.last_recruited) > user.remind:
+            await ctx.channel.send(f"Hey {ctx.author.mention}, it's time to recruit again!")
+            # TODO: UPC can you make a pretty embed please?
 
     @commands.hybrid_command(name="polling", with_app_command=True, description="Start or stop newnation polling")
     @app_commands.guilds(configInstance.data.guild)

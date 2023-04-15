@@ -10,6 +10,8 @@ class User:
     id: int
     nation: str
     template: str
+    remind: int = 0
+    last_recruited: int = 0
 
 
 @dataclass_json
