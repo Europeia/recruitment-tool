@@ -88,6 +88,14 @@ class Recruit(commands.Cog):
             except OverflowError:
                 await ctx.reply("Your reminder interval broke the computer. Nice job.")
 
+        # Do some basic validation
+        if interval < 30:
+            await ctx.reply("You cannot set a reminder interval shorter than 30 seconds.")
+            return
+        elif interval > 86400:
+            await ctx.reply("You cannot set a reminder interval greater than 1 day.")
+            return
+
         # Find & update the user object
         user = self.bot.rusers.get(ctx.author.id)
         user.remind = interval
