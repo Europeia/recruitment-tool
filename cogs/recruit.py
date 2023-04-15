@@ -1,6 +1,8 @@
 import asyncio
 # from functools import wraps
+import os
 
+import discord
 import requests
 
 from bs4 import BeautifulSoup as bs
@@ -48,6 +50,27 @@ class Recruit(commands.Cog):
             self.bot.std.info("Starting reporting")
             self.reporter.start()
 
+    async def update_status(self):
+        channel: discord.TextChannel = self.bot.get_channel(configInstance.data.recruit_channel_id)
+        message = await channel.fetch_message(configInstance.data.status_message_id)
+
+        embed_data = message.embeds[0].to_dict()
+
+        embed_data["fields"][0]["value"] = str(self.bot.queue.get_nation_count())
+        embed_data["fields"][1]["value"] = f"<t:{int(self.bot.queue.last_update.timestamp())}:R>"
+
+        embed = discord.Embed.from_dict(embed_data)
+        await message.edit(embed=embed)
+
+    @commands.hybrid_command(name="status_init", with_app_command=True, description="Initialize the status message")
+    @app_commands.guilds(configInstance.data.guild)
+    async def status_init(self, ctx: commands.Context):
+        embed = discord.Embed(title="Recruitment Status", description="Recruitment status for the last 24 hours")
+        embed.add_field(name="Nations in Queue", value=self.bot.queue.get_nation_count())
+        embed.add_field(name="Last Update", value=f"<t:{int(self.bot.queue.last_update.timestamp())}:R>")
+
+        await ctx.send(embed=embed)
+
     @commands.hybrid_command(name="register", with_app_command=True,
                              description="Register a nation and telegram template")
     @app_commands.guilds(configInstance.data.guild)
@@ -78,6 +101,7 @@ class Recruit(commands.Cog):
         if response_tuple:
             embed, view = response_tuple
             view.message = await ctx.reply(embed=embed, view=view)
+            await self.update_status()
         else:
             await ctx.reply("No nations in the queue at the moment!")
 
@@ -141,13 +165,13 @@ class Recruit(commands.Cog):
             self.bot.std.info("Polling NEWNATIONS shard.")
 
             new_nations = bs(requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations",
-                                          headers=headers).text, "xml").NEWNATIONS.text.split(
-                ",")  # type: ignore -- BeautifulSoup returns a variant type.
+                                          headers=headers).text, "xml").NEWNATIONS.text.split(",")  # type: ignore
         except:
             # certified error handling moment
-            self.bot.std.error("An unspecified error occured while trying to reach the NS API")
+            self.bot.std.error("An unspecified error occurred while trying to reach the NS API")
         else:
             self.bot.queue.update(new_nations)
+            await self.update_status()
 
     @tasks.loop(time=time(hour=23, minute=58))
     async def reporter(self):
@@ -183,7 +207,7 @@ class Recruit(commands.Cog):
 
         if reports_channel is not None:
             await reports_channel.send(
-                f"Daily Report: {date}\n```{summary}```")  # type: ignore -- Not sure why Pylance can't see this...
+                f"Daily Report: {date}\n```{summary}```")  # type: ignore
 
 
 async def setup(bot):

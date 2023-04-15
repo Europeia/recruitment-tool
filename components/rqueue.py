@@ -17,6 +17,7 @@ class Nation:
 
 @dataclass
 class Queue:
+    last_update: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     nations: list[Nation] = field(default_factory=list)
 
     def update(self, new_nations: List[str]):
@@ -31,6 +32,11 @@ class Queue:
             nation = Nation(nation_name)
 
             self.nations.insert(0, nation)
+
+        self.last_update = datetime.now(timezone.utc)
+
+    def get_nation_count(self) -> int:
+        return len([nation for nation in self.nations if not nation.recruited])
 
     def get_nations(self) -> List[str]:
         self.prune()
