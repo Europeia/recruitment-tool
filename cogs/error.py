@@ -15,6 +15,10 @@ class Error(commands.Cog):
             await ctx.reply("You need the recruiter role to perform this command!")
         elif isinstance(error, NotRegistered):
             await ctx.reply("You need to register to perform this command! Use /register")
+        elif isinstance(error, EmptyQueue):
+            await ctx.reply("The queue is empty!")
+        elif isinstance(error, LastRecruitTooRecent):
+            await ctx.reply(f"Last recruitment too recent! Please try again in {error.retry_in:.2f} seconds")
         elif isinstance(error, NotRecruitmentChannel):
             pass
         else:

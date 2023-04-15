@@ -15,20 +15,20 @@ def recruit_command_validated(users: Users, ctx: commands.Context) -> bool:
 
 def in_recruit_channel(ctx: commands.Context) -> bool:
     if ctx.channel.id != configInstance.data.recruit_channel_id:
-        raise NotRecruitmentChannel(ctx.author) # type: ignore
+        raise NotRecruitmentChannel(ctx.author)  # type: ignore
     else:
         return True
 
 
 def is_registered(users: Users, ctx: commands.Context) -> bool:
-    if not users.get(ctx.author.id):
-        raise NotRegistered(ctx.author) # type: ignore
+    if not users.get(ctx.author):
+        raise NotRegistered(ctx.author)  # type: ignore
     else:
         return True
 
 
 def is_recruiter(ctx: commands.Context) -> bool:
-    if ctx.guild.get_role(configInstance.data.recruit_role_id) not in ctx.author.roles: # type: ignore
-        raise NotRecruiter(ctx.author) # type: ignore
+    if ctx.guild.get_role(configInstance.data.recruit_role_id) not in ctx.author.roles:  # type: ignore
+        raise NotRecruiter(ctx.author)  # type: ignore
     else:
         return True

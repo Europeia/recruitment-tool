@@ -48,7 +48,8 @@ class Recruit(commands.Cog):
             self.bot.std.info("Starting reporting")
             self.reporter.start()
 
-    @commands.hybrid_command(name="register", with_app_command=True, description="Register a nation and telegram template")
+    @commands.hybrid_command(name="register", with_app_command=True,
+                             description="Register a nation and telegram template")
     @app_commands.guilds(configInstance.data.guild)
     async def register(self, ctx: commands.Context, nation: str, template: str):
         await ctx.defer()
@@ -59,11 +60,12 @@ class Recruit(commands.Cog):
             ctx.author.id, nation.lower().replace(" ", "_"), template.replace("%", ""))
 
         self.bot.rusers.add(new_user)
-        self.bot.std.info(f"Registering user: {new_user.id} with nation: {new_user.nation} and template: {new_user.template}")
+        self.bot.std.info(
+            f"Registering user: {new_user.id} with nation: {new_user.nation} and template: {new_user.template}")
 
         await ctx.reply("Registration complete!")
 
-    @commands.cooldown(1, 35, commands.BucketType.user)
+    # @commands.cooldown(1, 35, commands.BucketType.user)
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
     @app_commands.guilds(configInstance.data.guild)
     async def recruit(self, ctx: commands.Context):
@@ -71,7 +73,7 @@ class Recruit(commands.Cog):
 
         recruit_command_validated(users=self.bot.rusers, ctx=ctx)
 
-        response_tuple = get_recruit_embed(user_id=ctx.author.id, bot=self.bot)
+        response_tuple = get_recruit_embed(user=ctx.author, bot=self.bot)
 
         if response_tuple:
             embed, view = response_tuple
@@ -139,7 +141,8 @@ class Recruit(commands.Cog):
             self.bot.std.info("Polling NEWNATIONS shard.")
 
             new_nations = bs(requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations",
-                             headers=headers).text, "xml").NEWNATIONS.text.split(",")  # type: ignore -- BeautifulSoup returns a variant type.
+                                          headers=headers).text, "xml").NEWNATIONS.text.split(
+                ",")  # type: ignore -- BeautifulSoup returns a variant type.
         except:
             # certified error handling moment
             self.bot.std.error("An unspecified error occured while trying to reach the NS API")
@@ -179,7 +182,8 @@ class Recruit(commands.Cog):
         date = datetime.now().strftime("%Y-%m-%d")
 
         if reports_channel is not None:
-            await reports_channel.send(f"Daily Report: {date}\n```{summary}```")  # type: ignore -- Not sure why Pylance can't see this...
+            await reports_channel.send(
+                f"Daily Report: {date}\n```{summary}```")  # type: ignore -- Not sure why Pylance can't see this...
 
 
 async def setup(bot):
