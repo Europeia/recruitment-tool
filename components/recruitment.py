@@ -1,10 +1,20 @@
 import discord
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, time
 from typing import Optional, Tuple
+
+from discord.app_commands import commands
 
 from components.bot import RecruitBot
 from components.views import RecruitView
+
+def recruit(user, ctx: commands.Context, bot: RecruitBot) -> Optional[Tuple[discord.Embed, RecruitView]]:
+    response_tuple = get_recruit_embed(user_id=ctx.author.id, bot=bot)
+
+    if response_tuple:
+        user.last_recruited = time.time()
+
+    return response_tuple
 
 
 def get_recruit_embed(user_id: int, bot: RecruitBot) -> Optional[Tuple[discord.Embed, RecruitView]]:
