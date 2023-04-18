@@ -15,7 +15,7 @@ class RecruitBot(commands.Bot):
     queue: Queue
     daily: logging.Logger
     std: logging.Logger
-    
+
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
@@ -28,7 +28,7 @@ class RecruitBot(commands.Bot):
         self.daily, self.std = create_loggers()
         configInstance.set_logger(self.std)
 
-        self.default_cogs = ["base", "error", "recruit"]
+        self.default_cogs = ["base", "error", "recruit", "sessions"]
 
     async def setup_hook(self):
         # await self.load_extension("recruit")

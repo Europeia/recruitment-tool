@@ -14,6 +14,7 @@ class User:
     id: int
     nation: str
     template: str
+    active_session: bool = False
     allow_recruitment_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def set_next_recruitment(self, num_nations: int):

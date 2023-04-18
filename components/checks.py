@@ -2,7 +2,7 @@ from discord.ext import commands
 
 from components.config.config_manager import configInstance
 from components.users import Users
-from components.errors import NotRegistered, NotRecruiter, NotRecruitmentChannel
+from components.errors import NotRegistered, NotRecruiter, NotRecruitmentChannel, ActiveSession
 
 
 def register_command_validated(ctx: commands.Context) -> bool:
@@ -10,7 +10,7 @@ def register_command_validated(ctx: commands.Context) -> bool:
 
 
 def recruit_command_validated(users: Users, ctx: commands.Context) -> bool:
-    return in_recruit_channel(ctx) and is_registered(users, ctx) and is_recruiter(ctx)
+    return in_recruit_channel(ctx) and is_registered(users, ctx) and is_recruiter(ctx) and not in_active_session(users, ctx)
 
 
 def in_recruit_channel(ctx: commands.Context) -> bool:
@@ -30,5 +30,12 @@ def is_registered(users: Users, ctx: commands.Context) -> bool:
 def is_recruiter(ctx: commands.Context) -> bool:
     if ctx.guild.get_role(configInstance.data.recruit_role_id) not in ctx.author.roles:  # type: ignore
         raise NotRecruiter(ctx.author)  # type: ignore
+    else:
+        return True
+
+
+def in_active_session(users: Users, ctx: commands.Context) -> bool:
+    if users.get(ctx.author).active_session:
+        raise ActiveSession(ctx.author)
     else:
         return True

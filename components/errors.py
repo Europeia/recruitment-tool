@@ -43,3 +43,19 @@ class LastRecruitTooRecent(commands.CommandError):
         self.user = user
         self.retry_in = retry_in
         super().__init__(message="You have already recruited someone recently!")
+
+
+class SessionAlreadyStarted(commands.CommandError):
+    user: discord.User
+
+    def __init__(self, user: discord.User):
+        self.user = user
+        super().__init__(message="You already have a session started!")
+
+
+class ActiveSession(commands.CommandError):
+    user: discord.User
+
+    def __init__(self, user: discord.User):
+        self.user = user
+        super().__init__(message="You cannot use /recruit while in a session!")

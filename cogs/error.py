@@ -19,6 +19,10 @@ class Error(commands.Cog):
             await ctx.reply("The queue is empty!")
         elif isinstance(error, LastRecruitTooRecent):
             await ctx.reply(f"Last recruitment too recent! Please try again in {error.retry_in:.2f} seconds")
+        elif isinstance(error, SessionAlreadyStarted):
+            await ctx.reply("You are already in a recruitment session!")
+        elif isinstance(error, ActiveSession):
+            await ctx.reply("You cannot use /recruit while in a recruitment session!")
         elif isinstance(error, NotRecruitmentChannel):
             pass
         else:

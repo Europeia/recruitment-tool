@@ -15,7 +15,7 @@ from components.bot import RecruitBot
 from components.config.config_manager import configInstance
 from components.users import User
 from components.checks import recruit_command_validated, register_command_validated
-from components.recruitment import get_recruit_embed
+from components.recruitment import RecruitType, get_recruit_embed
 
 
 # def guilds_wrapper(f):
@@ -88,7 +88,6 @@ class Recruit(commands.Cog):
 
         await ctx.reply("Registration complete!")
 
-    # @commands.cooldown(1, 35, commands.BucketType.user)
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
     @app_commands.guilds(configInstance.data.guild)
     async def recruit(self, ctx: commands.Context):
@@ -96,7 +95,7 @@ class Recruit(commands.Cog):
 
         recruit_command_validated(users=self.bot.rusers, ctx=ctx)
 
-        response_tuple = get_recruit_embed(user=ctx.author, bot=self.bot)
+        response_tuple = get_recruit_embed(user=ctx.author, bot=self.bot, rtype=RecruitType.COMMAND)
 
         if response_tuple:
             embed, view = response_tuple
