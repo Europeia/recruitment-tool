@@ -34,8 +34,7 @@ class Sessions(commands.Cog):
         if interval < 45:
             interval = 45
 
-        session = Session(self.bot, ctx.author, ctx.channel.id, interval)
-        self.sessions[ctx.author.id] = session
+        self.sessions[ctx.author.id] = Session(self.bot, ctx.author, ctx.channel.id, interval)
 
         await ctx.reply(
             f"{datetime.now(timezone.utc).strftime('%H:%M:%S')} - Session started for user {ctx.author}! Interval: {interval} seconds")
