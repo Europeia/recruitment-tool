@@ -25,14 +25,14 @@ class Sessions(commands.Cog):
 
     @commands.hybrid_command(name="session", with_app_command=True, description="Start a session")
     @app_commands.guilds(configInstance.data.guild)
-    async def session(self, ctx: commands.Context, interval: int = 45):
+    async def session(self, ctx: commands.Context, interval: int = 35):
         if self.sessions.get(ctx.author.id):
             raise SessionAlreadyStarted(ctx.author)
 
         self.bot.rusers.get(ctx.author).active_session = True
 
-        if interval < 45:
-            interval = 45
+        if interval < 35:
+            interval = 35
 
         self.sessions[ctx.author.id] = Session(self.bot, ctx.author, ctx.channel.id, interval)
 
