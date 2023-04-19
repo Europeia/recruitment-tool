@@ -13,6 +13,8 @@ class Error(commands.Cog):
         print(error)
         if isinstance(error, NotRecruiter):
             await ctx.reply("You need the recruiter role to perform this command!")
+        elif isinstance(error, NotManager):
+            await ctx.reply("You need the manager role to perform this command!")
         elif isinstance(error, NotRegistered):
             await ctx.reply("You need to register to perform this command! Use /register")
         elif isinstance(error, EmptyQueue):
