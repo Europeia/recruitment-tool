@@ -24,6 +24,10 @@ class ConfigData:
         return self._recruit_role_id
 
     @property
+    def manager_role_id(self) -> int:
+        return self._manager_role_id
+
+    @property
     def report_channel_id(self) -> int:
         return self._report_channel_id
 

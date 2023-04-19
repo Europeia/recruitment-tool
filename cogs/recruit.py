@@ -14,7 +14,7 @@ from components.bot import RecruitBot
 
 from components.config.config_manager import configInstance
 from components.users import User
-from components.checks import recruit_command_validated, register_command_validated
+from components.checks import recruit_command_validated, register_command_validated, is_manager
 from components.recruitment import RecruitType, get_recruit_embed
 
 
@@ -65,6 +65,10 @@ class Recruit(commands.Cog):
     @commands.hybrid_command(name="status_init", with_app_command=True, description="Initialize the status message")
     @app_commands.guilds(configInstance.data.guild)
     async def status_init(self, ctx: commands.Context):
+        await ctx.defer()
+
+        is_manager(ctx=ctx)
+
         embed = discord.Embed(title="Recruitment Status", description="Recruitment status for the last 24 hours")
         embed.add_field(name="Nations in Queue", value=self.bot.queue.get_nation_count())
         embed.add_field(name="Last Update", value=f"<t:{int(self.bot.queue.last_update.timestamp())}:R>")
@@ -106,7 +110,6 @@ class Recruit(commands.Cog):
 
     @commands.hybrid_command(name="polling", with_app_command=True, description="Start or stop newnation polling")
     @app_commands.guilds(configInstance.data.guild)
-    @commands.has_permissions(administrator=True)
     @app_commands.choices(
         action=[
             Choice(name="start", value="start"),
@@ -115,6 +118,8 @@ class Recruit(commands.Cog):
     )
     async def polling(self, ctx: commands.Context, action: str):
         await ctx.defer()
+
+        is_manager(ctx=ctx)
 
         if action == "start":
             if self.newnations_polling.is_running():
@@ -133,9 +138,10 @@ class Recruit(commands.Cog):
 
     @commands.hybrid_command(name="purge", with_app_command=True, description="Clear queue")
     @app_commands.guilds(configInstance.data.guild)
-    @commands.has_permissions(administrator=True)
     async def purge(self, ctx: commands.Context):
         await ctx.defer()
+
+        is_manager(ctx=ctx)
 
         self.bot.std.info(f"Queue purge initiated by {ctx.author}")
         self.bot.queue.purge()

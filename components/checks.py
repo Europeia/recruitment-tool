@@ -34,6 +34,13 @@ def is_recruiter(ctx: commands.Context) -> bool:
         return True
 
 
+def is_manager(ctx: commands.Context) -> bool:
+    if ctx.guild.get_role(configInstance.data.manager_role_id) not in ctx.author.roles:  # type: ignore
+        raise NotManager(ctx.author)  # type: ignore
+    else:
+        return True
+
+
 def in_active_session(users: Users, ctx: commands.Context) -> bool:
     if users.get(ctx.author).active_session:
         raise ActiveSession(ctx.author)
