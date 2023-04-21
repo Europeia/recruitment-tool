@@ -2,8 +2,10 @@ import inspect
 import json
 from logging import Logger
 from os import getcwd, path
+from typing import Dict
 
 from .config_model import ConfigData
+
 
 class ObjectEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -32,7 +34,6 @@ class ConfigManager:
     _std: Logger
 
     def __init__(self) -> None:
-        print("INIT")
         self.readConfig()
         return
 
@@ -45,7 +46,6 @@ class ConfigManager:
         return
 
     def readConfig(self) -> None:
-        print("READ")
         try:
             f = open('settings.json', 'r')
             open_message = f'Loading settings from: {path.realpath(f.name)}'
@@ -55,14 +55,21 @@ class ConfigManager:
                 print(open_message)
 
             dict = json.load(f)
+            print(f"Loading! -- {dict}")
             self._data = ConfigData.from_dict(dict)
         except Exception as ex:
             print(ex)
         return
 
-    def writeConfig(self) -> None:
+    def writeConfig(self, data: Dict[str, str | int] | None) -> None:
+        if data is not None:
+            print(data)
+            self._data = ConfigData.from_dict(data)
+
+        print(self._data)
+
         f = open('settings.json', 'w')
-        json.dump(self._data, f, cls=ObjectEncoder, indent=2)
+        json.dump(self._data.to_dict(), f, cls=ObjectEncoder, indent=2)
         return
 
 

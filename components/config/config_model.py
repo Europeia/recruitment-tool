@@ -6,6 +6,19 @@ from cron_converter import Cron
 T = TypeVar('T', bound='ConfigData')
 
 
+class ConfigKeys:
+    operatorKeyId = 'operator'
+    guildIdKeyId = 'guildId'
+    recruitChannelIdKeyId = 'recruitChannelId'
+    recruitRoleIdKeyId = 'recruitRoleId'
+    reportChannelIdKeyId = 'reportChannelId'
+    statusMessageIdKeyId = 'statusMessageId'
+    pollingRateKeyId = 'pollingRate'
+    periodKeyId = 'period'
+    periodMaxKeyId = 'periodMax'
+    botTokenKeyId = 'botToken'
+
+
 class ConfigData:
     @property
     def operator(self) -> str:
@@ -47,19 +60,34 @@ class ConfigData:
     def bot_token(self) -> str:
         return self._bot_token
 
+    def to_dict(self) -> Dict[str, str | int]:
+        obj_json: Dict[str, str | int] = {}
+        obj_json[ConfigKeys.operatorKeyId] = self.operator
+        obj_json[ConfigKeys.guildIdKeyId] = self.guild.id
+        obj_json[ConfigKeys.recruitChannelIdKeyId] = self.recruit_channel_id
+        obj_json[ConfigKeys.recruitRoleIdKeyId] = self.recruit_role_id
+        obj_json[ConfigKeys.reportChannelIdKeyId] = self.report_channel_id
+        obj_json[ConfigKeys.statusMessageIdKeyId] = self.status_message_id
+        obj_json[ConfigKeys.pollingRateKeyId] = self.polling_rate
+        obj_json[ConfigKeys.periodKeyId] = self.period
+        obj_json[ConfigKeys.periodMaxKeyId] = self.period_max
+        obj_json[ConfigKeys.botTokenKeyId] = self.bot_token
+        print(f"To_dict: {obj_json}")
+        return obj_json
+
     @classmethod
-    def from_dict(cls: Type[T], dict: Dict) -> T:
+    def from_dict(cls, dict: Dict[str, str | int]):
         return cls(
-            operator=dict['operator'],
-            guildId=dict['guildId'],
-            recruitChannelId=dict['recruitChannelId'],
-            recruitRoleId=dict['recruitRoleId'],
-            reportChannelId=dict['reportChannelId'],
-            statusMessageId=dict['statusMessageId'],
-            pollingRate=dict['pollingRate'],
-            period=dict['period'],
-            periodMax=dict['periodMax'],
-            botToken=dict['botToken']
+            operator=str(dict[ConfigKeys.operatorKeyId]),
+            guildId=int(dict[ConfigKeys.guildIdKeyId]),
+            recruitChannelId=int(dict[ConfigKeys.recruitChannelIdKeyId]),
+            recruitRoleId=int(dict[ConfigKeys.recruitRoleIdKeyId]),
+            reportChannelId=int(dict[ConfigKeys.reportChannelIdKeyId]),
+            statusMessageId=int(dict[ConfigKeys.statusMessageIdKeyId]),
+            pollingRate=int(dict[ConfigKeys.pollingRateKeyId]),
+            period=int(dict[ConfigKeys.periodKeyId]),
+            periodMax=int(dict[ConfigKeys.periodMaxKeyId]),
+            botToken=str(dict[ConfigKeys.botTokenKeyId])
         )
         return
 
