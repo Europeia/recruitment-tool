@@ -20,6 +20,7 @@ class RecruitView(View):
 
 class SessionView(View):
     message: Message
+
     # session: Session
 
     def __init__(self, session):
@@ -55,13 +56,13 @@ class SessionView(View):
         await interaction.response.edit_message(embed=embed, view=self)
         self.stop()
 
-    @discord.ui.button(label="❌", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="✗", style=discord.ButtonStyle.red)
     async def cancel_callback(self, interaction: discord.Interaction, button):
         if interaction.user.id != self.session.user.id:
             await interaction.response.send_message("You canot interact with another user's session.")
             return
 
-        self.session.test.cancel()
+        self.session.recruit_loop.cancel()
         self.session.bot.rusers.get(self.session.user).active_session = False
 
         for child in self.children:

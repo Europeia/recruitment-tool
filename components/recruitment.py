@@ -14,16 +14,14 @@ class RecruitType(Enum):
     SESSION = 2
 
 
-def get_recruit_embed(user: discord.User, bot: RecruitBot, rtype: RecruitType) -> Tuple[discord.Embed, RecruitView | discord.ui.Button]:
+def get_recruit_embed(user: discord.User, bot: RecruitBot, rtype: RecruitType) -> \
+        Tuple[discord.Embed, RecruitView | discord.ui.Button]:
     recruiter = bot.rusers.get(user)
 
     if recruiter.allow_recruitment_at > datetime.now(timezone.utc):
         raise LastRecruitTooRecent(user, (recruiter.allow_recruitment_at - datetime.now(timezone.utc)).total_seconds())
 
-    nations = bot.queue.get_nations()
-
-    if not nations:
-        raise EmptyQueue(user)
+    nations = bot.queue.get_nations(user=user)
 
     color = int("2d0001", 16)
     embed = discord.Embed(title=f"Recruit", color=color)

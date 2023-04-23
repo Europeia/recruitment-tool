@@ -21,14 +21,15 @@ class Session:
         self.channel = self.bot.get_channel(channel_id)
 
         self.interval = interval
-        self.test.change_interval(seconds=self.interval)
+        self.recruit_loop.change_interval(seconds=self.interval)
 
-        self.test.start()
+        self.recruit_loop.start()
 
     @tasks.loop(seconds=interval)
-    async def test(self):
+    async def recruit_loop(self):
+        self.bot.std.info(f"Session looping for user {self.user.name}")
         if self.strikes >= 2:
-            self.test.cancel()
+            self.recruit_loop.cancel()
             self.bot.rusers.get(self.user).active_session = False
             await self.channel.send(f"Ending <@!{self.user.id}>'s recruitment session due to inactivity.")
         else:
