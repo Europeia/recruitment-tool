@@ -1,3 +1,5 @@
+import discord
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import List
@@ -38,7 +40,7 @@ class Queue:
     def get_nation_count(self) -> int:
         return len([nation for nation in self.nations if not nation.recruited])
 
-    def get_nations(self) -> List[str]:
+    def get_nations(self, user: discord.User) -> List[str]:
         self.prune()
 
         resp = [nation.name for nation in self.nations if not nation.recruited][:8]
@@ -50,7 +52,7 @@ class Queue:
         if resp:
             return resp
         else:
-            raise EmptyQueue
+            raise EmptyQueue(user=user)
 
     def prune(self):
         current_time = datetime.now(timezone.utc)
