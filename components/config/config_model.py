@@ -72,7 +72,6 @@ class ConfigData:
         obj_json[ConfigKeys.periodKeyId] = self.period
         obj_json[ConfigKeys.periodMaxKeyId] = self.period_max
         obj_json[ConfigKeys.botTokenKeyId] = self.bot_token
-        print(f"To_dict: {obj_json}")
         return obj_json
 
     @classmethod
