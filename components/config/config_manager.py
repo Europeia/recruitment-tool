@@ -55,7 +55,6 @@ class ConfigManager:
                 print(open_message)
 
             dict = json.load(f)
-            print(f"Loading! -- {dict}")
             self._data = ConfigData.from_dict(dict)
         except Exception as ex:
             print(ex)
@@ -63,10 +62,7 @@ class ConfigManager:
 
     def writeConfig(self, data: Dict[str, str | int] | None) -> None:
         if data is not None:
-            print(data)
             self._data = ConfigData.from_dict(data)
-
-        print(self._data)
 
         f = open('settings.json', 'w')
         json.dump(self._data.to_dict(), f, cls=ObjectEncoder, indent=2)
