@@ -72,6 +72,22 @@ class Recruit(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.hybrid_command(name="pq", with_app_command=True, description="Print the queue")
+    @app_commands.guilds(configInstance.data.guild)
+    async def pq(self, ctx: commands.Context):
+        await ctx.defer()
+
+        if ctx.author.id not in [110600636319440896, 230778695713947648, 134499733849899008]:
+            await ctx.reply("You do not have permission to use this command.")
+            return
+
+        nations = self.bot.queue.get_full_queue()
+
+        with open("queue.txt", "w") as out_file:
+            out_file.write("\n".join([f"{nation.name} {nation.recruited} {nation.time}" for nation in nations]))
+
+        await ctx.reply(file=discord.File("queue.txt"))
+
     @commands.hybrid_command(name="register", with_app_command=True,
                              description="Register a nation and telegram template")
     @app_commands.guilds(configInstance.data.guild)

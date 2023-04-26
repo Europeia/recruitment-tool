@@ -37,6 +37,9 @@ class Queue:
 
         self.last_update = datetime.now(timezone.utc)
 
+    def get_full_queue(self) -> List[Nation]:
+        return self.nations
+
     def get_nation_count(self) -> int:
         return len([nation for nation in self.nations if not nation.recruited])
 
@@ -58,8 +61,8 @@ class Queue:
         current_time = datetime.now(timezone.utc)
 
         self.nations = [nation for nation in self.nations if (not nation.recruited and (
-                current_time - nation.time).total_seconds() < PRUNE_TIME) or (
-                                nation.recruited and (current_time - nation.time).total_seconds() < 30)]
+            current_time - nation.time).total_seconds() < PRUNE_TIME) or (
+            nation.recruited and (current_time - nation.time).total_seconds() < 30)]
 
     def purge(self):
         self.nations = []
