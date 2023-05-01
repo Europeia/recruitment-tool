@@ -22,6 +22,8 @@ class Sessions(commands.Cog):
         for user in self.bot.rusers.users:
             user.active_session = False
 
+        self.bot.sessions = {}
+
     @commands.hybrid_command(name="session", with_app_command=True, description="Start a session")
     @app_commands.guilds(configInstance.data.guild)
     async def session(self, ctx: commands.Context, interval: int = 35):
