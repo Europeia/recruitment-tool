@@ -1,13 +1,14 @@
+import discord
 import logging
 
-import discord
-
 from discord.ext import commands
+from typing import Dict
 
 from components.config.config_manager import configInstance
 from components.loggers import create_loggers
 from components.users import Users
 from components.rqueue import Queue
+from components.session import Session
 
 
 class RecruitBot(commands.Bot):
@@ -15,6 +16,7 @@ class RecruitBot(commands.Bot):
     queue: Queue
     daily: logging.Logger
     std: logging.Logger
+    sessions: Dict[int, Session] = {}
 
     def __init__(self):
         intents = discord.Intents.default()
