@@ -166,7 +166,7 @@ class Recruit(commands.Cog):
 
             new_nations = bs(
                 requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations", headers=headers).text,
-                "xml").NEWNATIONS.text.split(",")  ## type: ignore -- BeautifulSoup returns a variant type.
+                "xml").NEWNATIONS.text.split(",")  # type: ignore -- BeautifulSoup returns a variant type.
         except:
             # certified error handling moment
             self.bot.std.error("An unspecified error occurred while trying to reach the NS API")
