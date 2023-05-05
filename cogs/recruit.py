@@ -18,23 +18,6 @@ from components.checks import recruit_command_validated, register_command_valida
 from components.recruitment import RecruitType, get_recruit_embed
 
 
-# def guilds_wrapper(f):
-#     @wraps(f)
-#     def _impl(self, *method_args, **method_kwargs):
-#         print(self)
-#         app_commands.guilds(configInstance.data.guild)
-#         return f(*method_args, **method_kwargs)
-#     return _impl
-
-
-# def loop_rate_wrapper(f):
-#     @wraps(f)
-#     def _impl(self, *method_args, **method_kwargs):
-#         tasks.loop(seconds=configInstance.data.polling_rate)
-#         return f(*method_args, **method_kwargs)
-#     return _impl
-
-
 class Recruit(commands.Cog):
     bot: RecruitBot
 
