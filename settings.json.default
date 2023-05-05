@@ -4,6 +4,7 @@
   "reportChannelId": 0,
   "recruitChannelId": 0,
   "recruitRoleId": 0,
+  "managerRoleId": 0,
   "statusMessageId": 0,
   "pollingRate": 15,
   "period": 30,

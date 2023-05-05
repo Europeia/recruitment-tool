@@ -19,6 +19,14 @@ class NotRecruiter(commands.CommandError):
         super().__init__(message="You don't have the 'Recruiter' role!")
 
 
+class NotManager(commands.CommandError):
+    user: discord.User
+
+    def __init__(self, user: discord.User):
+        self.user = user
+        super().__init__(message="You don't have the 'Recruit Manager' role!")
+
+
 class NotRecruitmentChannel(commands.CommandError):
     user: discord.User
 

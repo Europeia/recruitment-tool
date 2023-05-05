@@ -24,6 +24,10 @@ class ConfigData:
         return self._recruit_role_id
 
     @property
+    def manager_role_id(self) -> int:
+        return self._manager_role_id
+
+    @property
     def report_channel_id(self) -> int:
         return self._report_channel_id
 
@@ -54,6 +58,7 @@ class ConfigData:
             guildId=dict['guildId'],
             recruitChannelId=dict['recruitChannelId'],
             recruitRoleId=dict['recruitRoleId'],
+            managerRoleId=dict['managerRoleId'],
             reportChannelId=dict['reportChannelId'],
             statusMessageId=dict['statusMessageId'],
             pollingRate=dict['pollingRate'],
@@ -63,12 +68,13 @@ class ConfigData:
         )
         return
 
-    def __init__(self, operator="", guildId=0, recruitChannelId=0, recruitRoleId=0, reportChannelId=0,
+    def __init__(self, operator="", guildId=0, recruitChannelId=0, recruitRoleId=0, managerRoleId=0, reportChannelId=0,
                  statusMessageId=0, pollingRate=0, period=0, periodMax=0, botToken="") -> None:
         self._operator = operator
         self._guild = discord.Object(id=guildId)
         self._recruit_channel_id = recruitChannelId
         self._recruit_role_id = recruitRoleId
+        self._manager_role_id = managerRoleId
         self._report_channel_id = reportChannelId
         self._status_message_id = statusMessageId
         self._polling_rate = pollingRate

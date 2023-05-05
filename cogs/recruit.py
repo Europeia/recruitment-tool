@@ -64,8 +64,11 @@ class Recruit(commands.Cog):
         await message.edit(embed=embed)
 
     @commands.hybrid_command(name="status_init", with_app_command=True, description="Initialize the status message")
+    @commands.has_role(configInstance.data.manager_role_id)
     @app_commands.guilds(configInstance.data.guild)
     async def status_init(self, ctx: commands.Context):
+        await ctx.defer()
+
         embed = discord.Embed(title="Recruitment Status", description="Current recruitment status")
         embed.add_field(name="Nations in Queue", value=self.bot.queue.get_nation_count())
         embed.add_field(name="Last Update", value=f"<t:{int(self.bot.queue.last_update.timestamp())}:R>")
@@ -74,6 +77,7 @@ class Recruit(commands.Cog):
 
     @commands.hybrid_command(name="register", with_app_command=True,
                              description="Register a nation and telegram template")
+    @commands.has_role(configInstance.data.recruiter_role_id)
     @app_commands.guilds(configInstance.data.guild)
     async def register(self, ctx: commands.Context, nation: str, template: str):
         await ctx.defer()
@@ -90,6 +94,7 @@ class Recruit(commands.Cog):
         await ctx.reply("Registration complete!")
 
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
+    @commands.has_role(configInstance.data.recruiter_role_id)
     @app_commands.guilds(configInstance.data.guild)
     async def recruit(self, ctx: commands.Context):
         await ctx.defer()
@@ -106,8 +111,8 @@ class Recruit(commands.Cog):
             await ctx.reply("No nations in the queue at the moment!")
 
     @commands.hybrid_command(name="polling", with_app_command=True, description="Start or stop newnation polling")
+    @commands.has_role(configInstance.data.manager_role_id)
     @app_commands.guilds(configInstance.data.guild)
-    @commands.has_permissions(administrator=True)
     @app_commands.choices(
         action=[
             Choice(name="start", value="start"),
@@ -133,8 +138,8 @@ class Recruit(commands.Cog):
                 await ctx.reply("Polling stopped.")
 
     @commands.hybrid_command(name="purge", with_app_command=True, description="Clear queue")
+    @commands.has_role(configInstance.data.manager_role_id)
     @app_commands.guilds(configInstance.data.guild)
-    @commands.has_permissions(administrator=True)
     async def purge(self, ctx: commands.Context):
         await ctx.defer()
 
