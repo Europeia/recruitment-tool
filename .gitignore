@@ -105,3 +105,4 @@ ENV/
 logs/*
 settings.json
 config.json
+queue.txt

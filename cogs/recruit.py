@@ -51,6 +51,7 @@ class Recruit(commands.Cog):
             self.reporter.start()
 
     async def update_status(self):
+        self.bot.std.info("Updating Status Embed")
         channel: discord.TextChannel = self.bot.get_channel(configInstance.data.recruit_channel_id)
         message = await channel.fetch_message(configInstance.data.status_message_id)
 
@@ -69,7 +70,7 @@ class Recruit(commands.Cog):
 
         is_manager(ctx=ctx)
 
-        embed = discord.Embed(title="Recruitment Status", description="Recruitment status for the last 24 hours")
+        embed = discord.Embed(title="Recruitment Status", description="Current recruitment status")
         embed.add_field(name="Nations in Queue", value=self.bot.queue.get_nation_count())
         embed.add_field(name="Last Update", value=f"<t:{int(self.bot.queue.last_update.timestamp())}:R>")
 
@@ -169,7 +170,9 @@ class Recruit(commands.Cog):
         try:
             self.bot.std.info("Polling NEWNATIONS shard.")
 
-            new_nations = bs(requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations", headers=headers).text, "xml").NEWNATIONS.text.split(",")  ## type: ignore -- BeautifulSoup returns a variant type.
+            new_nations = bs(
+                requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations", headers=headers).text,
+                "xml").NEWNATIONS.text.split(",")  # type: ignore -- BeautifulSoup returns a variant type.
         except:
             # certified error handling moment
             self.bot.std.error("An unspecified error occurred while trying to reach the NS API")
