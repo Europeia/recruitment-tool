@@ -77,6 +77,7 @@ class Recruit(commands.Cog):
 
     @commands.hybrid_command(name="register", with_app_command=True,
                              description="Register a nation and telegram template")
+    @commands.has_role(configInstance.data.recruiter_role_id)
     @app_commands.guilds(configInstance.data.guild)
     async def register(self, ctx: commands.Context, nation: str, template: str):
         await ctx.defer()
@@ -93,6 +94,7 @@ class Recruit(commands.Cog):
         await ctx.reply("Registration complete!")
 
     @commands.hybrid_command(name="recruit", with_app_command=True, description="Generate a list of nations to recruit")
+    @commands.has_role(configInstance.data.recruiter_role_id)
     @app_commands.guilds(configInstance.data.guild)
     async def recruit(self, ctx: commands.Context):
         await ctx.defer()

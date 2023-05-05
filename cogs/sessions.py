@@ -25,6 +25,7 @@ class Sessions(commands.Cog):
         self.bot.sessions = {}
 
     @commands.hybrid_command(name="session", with_app_command=True, description="Start a session")
+    @commands.has_role(configInstance.data.recruiter_role_id)
     @app_commands.guilds(configInstance.data.guild)
     async def session(self, ctx: commands.Context, interval: int = 35):
         if self.bot.sessions.get(ctx.author.id):
