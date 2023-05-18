@@ -1,8 +1,9 @@
 import discord
 
+from bs4 import ResultSet
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import List
+from typing import Any, List
 
 from components.errors import EmptyQueue
 
@@ -14,7 +15,6 @@ PRUNE_TIME: int = 3600
 class Nation:
     name: str
     time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    recruited: bool = False
 
 
 @dataclass
@@ -22,32 +22,24 @@ class Queue:
     last_update: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     nations: list[Nation] = field(default_factory=list)
 
-    def update(self, new_nations: List[str]):
-        for idx, nation in enumerate(self.nations):
-            if nation.name in new_nations:
-                new_nations.remove(nation.name)
+    def update(self, new_nations: ResultSet[Any], exceptions: List[str]):
+        current = [nation.name for nation in self.nations]
 
-                if nation.recruited:
-                    self.nations[idx] = Nation(name=nation.name, recruited=True)
-
-        for nation_name in reversed(new_nations):
-            nation = Nation(nation_name)
-
-            self.nations.insert(0, nation)
+        for nation in reversed(new_nations):
+            if nation.attrs["name"] not in current and nation.REGION.text not in exceptions and int(nation.FOUNDEDTIME.text) > int(self.last_update.timestamp()):
+                self.nations.insert(0, Nation(name=nation.attrs["name"]))
 
         self.last_update = datetime.now(timezone.utc)
 
     def get_nation_count(self) -> int:
-        return len([nation for nation in self.nations if not nation.recruited])
+        return len(self.nations)
 
     def get_nations(self, user: discord.User) -> List[str]:
         self.prune()
 
-        resp = [nation.name for nation in self.nations if not nation.recruited][:8]
+        resp = [nation.name for nation in self.nations][:8]
 
-        for nation in self.nations:
-            if nation.name in resp:
-                nation.recruited = True
+        self.nations = self.nations[8:]
 
         if resp:
             return resp
@@ -57,9 +49,7 @@ class Queue:
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
-        self.nations = [nation for nation in self.nations if (not nation.recruited and (
-                current_time - nation.time).total_seconds() < PRUNE_TIME) or (
-                                nation.recruited and (current_time - nation.time).total_seconds() < 30)]
+        self.nations = [nation for nation in self.nations if ((current_time - nation.time).total_seconds() < PRUNE_TIME)]
 
     def purge(self):
         self.nations = []
