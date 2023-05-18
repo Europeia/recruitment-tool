@@ -1,8 +1,9 @@
 import discord
+import json
 import logging
 
 from discord.ext import commands
-from typing import Dict
+from typing import Dict, List
 
 from components.config.config_manager import configInstance
 from components.loggers import create_loggers
@@ -17,6 +18,7 @@ class RecruitBot(commands.Bot):
     daily: logging.Logger
     std: logging.Logger
     sessions: Dict[int, Session] = {}
+    exceptions: List[str] = []
 
     def __init__(self):
         intents = discord.Intents.default()
@@ -29,6 +31,9 @@ class RecruitBot(commands.Bot):
         self.queue = Queue()
         self.daily, self.std = create_loggers()
         configInstance.set_logger(self.std)
+
+        with open("exceptions.json", "r") as in_file:
+            self.exceptions = json.load(in_file)
 
         self.default_cogs = ["base", "error", "recruit", "sessions"]
 

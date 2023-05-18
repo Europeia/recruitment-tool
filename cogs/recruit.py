@@ -1,5 +1,6 @@
 import asyncio
 # from functools import wraps
+import json
 import os
 
 import discord
@@ -143,6 +144,36 @@ class Recruit(commands.Cog):
 
         await ctx.reply("Done.")
 
+    @commands.hybrid_command(name="exceptions", with_app_command=True, description="Add or remove exceptions")
+    @app_commands.guilds(configInstance.data.guild)
+    @commands.has_permissions(administrator=True)
+    @app_commands.choices(
+        action=[
+            Choice(name="add", value="add"),
+            Choice(name="remove", value="remove")
+        ]
+    )
+    async def exceptions(self, ctx: commands.Context, action: str, region: str):
+        await ctx.defer()
+
+        region = region.lower().replace(" ", "_")
+
+        if action == "add":
+            if region in self.bot.exceptions:
+                await ctx.reply("Region already in exceptions.")
+            else:
+                self.bot.exceptions.append(region)
+                await ctx.reply("Region added to exceptions.")
+        elif action == "remove":
+            if region not in self.bot.exceptions:
+                await ctx.reply("Region not in exceptions.")
+            else:
+                self.bot.exceptions.remove(region)
+                await ctx.reply("Region removed from exceptions.")
+
+        with open("exceptions.json", "w") as f:
+            json.dump(self.bot.exceptions, f)
+
     @tasks.loop(seconds=configInstance.data.polling_rate)
     async def newnations_polling(self):
         current_time = datetime.now()
@@ -165,13 +196,13 @@ class Recruit(commands.Cog):
             self.bot.std.info("Polling NEWNATIONS shard.")
 
             new_nations = bs(
-                requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnations", headers=headers).text,
-                "xml").NEWNATIONS.text.split(",")  # type: ignore -- BeautifulSoup returns a variant type.
+                requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails", headers=headers).text,
+                "xml").find_all("NEWNATION")  # type: ignore -- BeautifulSoup returns a variant type.
         except:
             # certified error handling moment
             self.bot.std.error("An unspecified error occurred while trying to reach the NS API")
         else:
-            self.bot.queue.update(new_nations)
+            self.bot.queue.update(new_nations, self.bot.exceptions)
             await self.update_status()
 
     @tasks.loop(time=time(hour=23, minute=58))
