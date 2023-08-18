@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Type, TypeVar
+from typing import Dict, List, Type, TypeVar
 import discord
 from cron_converter import Cron
 
@@ -47,6 +47,10 @@ class ConfigData:
     def bot_token(self) -> str:
         return self._bot_token
 
+    @property
+    def recruitment_exceptions(self) -> List[str]:
+        return self._recruitment_exceptions
+
     @classmethod
     def from_dict(cls: Type[T], dict: Dict) -> T:
         return cls(
@@ -59,12 +63,13 @@ class ConfigData:
             pollingRate=dict['pollingRate'],
             period=dict['period'],
             periodMax=dict['periodMax'],
-            botToken=dict['botToken']
+            botToken=dict['botToken'],
+            recruitmentExceptions=dict['recruitmentExceptions']
         )
         return
 
     def __init__(self, operator="", guildId=0, recruitChannelId=0, recruitRoleId=0, reportChannelId=0,
-                 statusMessageId=0, pollingRate=0, period=0, periodMax=0, botToken="") -> None:
+                 statusMessageId=0, pollingRate=0, period=0, periodMax=0, botToken="", recruitmentExceptions=[]) -> None:
         self._operator = operator
         self._guild = discord.Object(id=guildId)
         self._recruit_channel_id = recruitChannelId
@@ -75,3 +80,4 @@ class ConfigData:
         self._period = period
         self._period_max = periodMax
         self._bot_token = botToken
+        self._recruitment_exceptions = recruitmentExceptions

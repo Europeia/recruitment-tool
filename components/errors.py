@@ -59,3 +59,11 @@ class ActiveSession(commands.CommandError):
     def __init__(self, user: discord.User):
         self.user = user
         super().__init__(message="You cannot use /recruit while in a session!")
+
+
+class NoWelcomeTemplate(commands.CommandError):
+    user: discord.User
+
+    def __init__(self, user: discord.User):
+        self.user = user
+        super().__init__("No welcome template")

@@ -15,10 +15,10 @@ from components.session import Session
 class RecruitBot(commands.Bot):
     rusers: Users
     queue: Queue
+    welcome_queue: Queue
     daily: logging.Logger
     std: logging.Logger
     sessions: Dict[int, Session] = {}
-    exceptions: List[str] = []
 
     def __init__(self):
         intents = discord.Intents.default()
@@ -29,11 +29,9 @@ class RecruitBot(commands.Bot):
         # there is already a users prop for the bot obj, so our custom one will be rusers /shrug
         self.rusers = Users().from_file()
         self.queue = Queue()
+        self.welcome_queue = Queue()
         self.daily, self.std = create_loggers()
         configInstance.set_logger(self.std)
-
-        with open("exceptions.json", "r") as in_file:
-            self.exceptions = json.load(in_file)
 
         self.default_cogs = ["base", "error", "recruit", "sessions"]
 
