@@ -23,6 +23,8 @@ class Error(commands.Cog):
             await ctx.reply("You are already in a recruitment session!")
         elif isinstance(error, ActiveSession):
             await ctx.reply("You cannot use /recruit while in a recruitment session!")
+        elif isinstance(error, NoWelcomeTemplate):
+            await ctx.reply("Please set a welcome template before using this command.")
         elif isinstance(error, NotRecruitmentChannel):
             pass
         else:

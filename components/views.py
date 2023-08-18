@@ -3,7 +3,7 @@ import discord
 from discord import Message
 from discord.ui import View
 
-from components.errors import EmptyQueue
+from components.errors import EmptyQueue, LastRecruitTooRecent
 
 
 class RecruitView(View):
@@ -23,6 +23,7 @@ class RecruitView(View):
 class SessionView(View):
     # bot: RecruitBot
     message: Message
+
     # session: Session
 
     def __init__(self, session, bot):
@@ -56,7 +57,11 @@ class SessionView(View):
         try:
             embed, link_button = get_recruit_embed(self.session.user, self.session.bot, RecruitType.SESSION)
         except EmptyQueue:
-            await interaction.response.edit_message(content="Received user acknowledgement, but queue is empty.", view=self)
+            await interaction.response.edit_message(content="Received user acknowledgement, but queue is empty.",
+                                                    view=self)
+        except LastRecruitTooRecent:
+            await interaction.response.edit_message(
+                content="Received user acknowledgement, but last recruitment was too recent.", view=self)
         else:
             self.add_item(link_button)
 

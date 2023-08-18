@@ -1,8 +1,9 @@
 import discord
+import json
 import logging
 
 from discord.ext import commands
-from typing import Dict
+from typing import Dict, List
 
 from components.config.config_manager import configInstance
 from components.loggers import create_loggers
@@ -14,6 +15,7 @@ from components.session import Session
 class RecruitBot(commands.Bot):
     rusers: Users
     queue: Queue
+    welcome_queue: Queue
     daily: logging.Logger
     std: logging.Logger
     sessions: Dict[int, Session] = {}
@@ -27,6 +29,7 @@ class RecruitBot(commands.Bot):
         # there is already a users prop for the bot obj, so our custom one will be rusers /shrug
         self.rusers = Users().from_file()
         self.queue = Queue()
+        self.welcome_queue = Queue()
         self.daily, self.std = create_loggers()
         configInstance.set_logger(self.std)
 

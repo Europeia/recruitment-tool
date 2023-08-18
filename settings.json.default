@@ -8,5 +8,6 @@
   "pollingRate": 15,
   "period": 30,
   "periodMax": 5,
-  "botToken": "<Discord Bot Token>"
+  "botToken": "<Discord Bot Token>",
+  "recruitmentExceptions": []
 }

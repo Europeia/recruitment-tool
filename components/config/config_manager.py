@@ -5,6 +5,7 @@ from os import getcwd, path
 
 from .config_model import ConfigData
 
+
 class ObjectEncoder(json.JSONEncoder):
     def default(self, obj):
         if hasattr(obj, "to_json"):
@@ -62,7 +63,22 @@ class ConfigManager:
 
     def writeConfig(self) -> None:
         f = open('settings.json', 'w')
-        json.dump(self._data, f, cls=ObjectEncoder, indent=2)
+
+        data = {
+            "operator": self._data._operator,
+            "guildId": self._data._guild.id,
+            "recruitChannelId": self._data._recruit_channel_id,
+            "recruitRoleId": self._data._recruit_role_id,
+            "reportChannelId": self._data._report_channel_id,
+            "statusMessageId": self._data._status_message_id,
+            "pollingRate": self._data._polling_rate,
+            "period": self._data._period,
+            "periodMax": self._data._period_max,
+            "botToken": self._data._bot_token,
+            "recruitmentExceptions": self._data._recruitment_exceptions
+        }
+
+        json.dump(data, f, cls=ObjectEncoder, indent=2, skipkeys=True)
         return
 
 
