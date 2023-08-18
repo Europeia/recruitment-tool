@@ -14,7 +14,7 @@ class User:
     id: int
     nation: str
     template: str
-    welcome_template: str | None
+    welcome_template: str | None = None
     active_session: bool = False
     allow_recruitment_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
