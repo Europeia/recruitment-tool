@@ -19,6 +19,7 @@ class Nation:
 
 @dataclass
 class Queue:
+    queue_type: str
     last_update: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     nations: list[Nation] = field(default_factory=list)
 
@@ -32,7 +33,8 @@ class Queue:
         return len(self.nations)
 
     def get_nations(self, user: discord.User, return_count: int = 8) -> List[str]:
-        self.prune()
+        if self.queue_type != "welcome":
+            self.prune()
 
         resp = [nation.name for nation in self.nations][:return_count]
 
@@ -46,7 +48,8 @@ class Queue:
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
-        self.nations = [nation for nation in self.nations if ((current_time - nation.time).total_seconds() < PRUNE_TIME)]
+        self.nations = [nation for nation in self.nations if
+                        ((current_time - nation.time).total_seconds() < PRUNE_TIME)]
 
     def purge(self):
         self.nations = []

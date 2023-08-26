@@ -31,8 +31,8 @@ def get_recruit_embed(user: discord.User, bot: RecruitBot, rtype: RecruitType) -
         nation = bot.welcome_queue.get_nations(user=user, return_count=1)[0]
 
         embed = discord.Embed(title="Welcome", color=color)
-        embed.add_field(name="Nation", value=f"https://www.natoinstates.net/nation={nation}")
-        embed.add_field(name="Template", value=f"'''{recruiter.welcome_template}'''", inline=False)
+        embed.add_field(name="Nation", value=f"https://www.nationstates.net/nation={nation}")
+        embed.add_field(name="Template", value=f"```{recruiter.welcome_template}```", inline=False)
         embed.set_footer(
             text=f"Initiated by {recruiter.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
 

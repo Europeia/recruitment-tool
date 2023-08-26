@@ -100,7 +100,8 @@ class Recruit(commands.Cog):
 
         await ctx.reply("Registration complete!")
 
-    @commands.hybrid_command(name="wregister", with_app_command=True, description="Register a welcoming template (register as a recruiter first)")
+    @commands.hybrid_command(name="wregister", with_app_command=True,
+                             description="Register a welcoming template (register as a recruiter first)")
     @app_commands.guilds(configInstance.data.guild)
     async def wregister(self, ctx: commands.Context, template: str):
         await ctx.defer()
@@ -251,7 +252,8 @@ class Recruit(commands.Cog):
             self.bot.std.info("Polling HAPPENINGS shard.")
 
             happenings = bs(requests.get(
-                f"https://www.nationstates.net/cgi-bin/api.cgi?q=happenings;view=region.europeia;filter=move+founding;sincetime={int(self.bot.welcome_queue.last_update.timestamp()) - 45}", headers=headers).text, "xml").find_all("EVENT")
+                f"https://www.nationstates.net/cgi-bin/api.cgi?q=happenings;view=region.europeia;filter=move+founding;sincetime={int(self.bot.welcome_queue.last_update.timestamp()) - 45}",
+                headers=headers).text, "xml").find_all("EVENT")
 
         except:
             self.bot.std.error("An unspecified error occurred while trying to poll the HAPPENINGS shard")
@@ -284,14 +286,14 @@ class Recruit(commands.Cog):
 
         for entry in data:
             if not entry:
-                return
+                continue
 
             try:
-                user, count = entry.split(": ")[1].split()
-            except:
-                user = entry.split(": ")[1]
+                user, count = entry.split(": ")[1].split(" ")
+            except ValueError:
+                user = entry.split(": ")[1].strip()
 
-                if not welcome_users[user]:
+                if not welcome_users.get(user):
                     welcome_users[user] = 0
                 welcome_users[user] += 1
             else:
@@ -310,7 +312,8 @@ class Recruit(commands.Cog):
         date = datetime.now().strftime("%Y-%m-%d")
 
         if reports_channel is not None:  # type: ignore
-            await reports_channel.send(f"Daily Report: {date}\n**Recruitment**\n```{recruit_summary}```\n**Welcoming**\n```{welcome_summary}```")
+            await reports_channel.send(
+                f"Daily Report: {date}\n**Recruitment**\n```{recruit_summary}```\n**Welcoming**\n```{welcome_summary}```")
 
 
 async def setup(bot):
