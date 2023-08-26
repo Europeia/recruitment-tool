@@ -28,8 +28,9 @@ class RecruitBot(commands.Bot):
 
         # there is already a users prop for the bot obj, so our custom one will be rusers /shrug
         self.rusers = Users().from_file()
-        self.queue = Queue()
-        self.welcome_queue = Queue()
+        self.queue = Queue("recruit")
+        self.welcome_queue = Queue("welcome")
+
         self.daily, self.std = create_loggers()
         configInstance.set_logger(self.std)
 
