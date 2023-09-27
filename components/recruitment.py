@@ -1,74 +1,100 @@
 import discord
 
 from datetime import datetime, timezone
-from enum import Enum
-from typing import Optional, Tuple
+from discord.ui import Modal, View
 
-from components.bot import RecruitBot
-from components.views import RecruitView
-from components.errors import EmptyQueue, LastRecruitTooRecent, NotRegistered, NoWelcomeTemplate
+from components.bot import Bot
+from components.errors import NotRegistered
 
 
-class RecruitType(Enum):
-    COMMAND = 1,
-    SESSION = 2,
-    WELCOME = 3
+class RegistrationModal(Modal, title="Registration"):
+    def __init__(self, bot: Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    nation = discord.ui.TextInput(
+        label="Nation",
+        placeholder="Enter your nation name",
+        min_length=3,
+        max_length=40,
+    )
+
+    recruitment_template = discord.ui.TextInput(
+        label="Recruitment Template",
+        placeholder="Enter your recruitment template",
+        min_length=10,
+        max_length=20,
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        async with self.bot.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                nation = self.nation.value.strip().lower().replace(" ", "_")
+                template = self.recruitment_template.value.replace("%", "")
+                num = await cur.execute('SELECT id FROM users WHERE discordId = %s;', (interaction.user.id,))
+
+                if num == 0:
+                    await cur.execute('INSERT INTO users (discordId, nation, recruitTemplate) VALUES (%s, %s, %s);',
+                                      (interaction.user.id, nation, template))
+                else:
+                    (recruiter_id,) = await cur.fetchone()
+                    await cur.execute('UPDATE users SET nation = %s, recruitTemplate = %s WHERE id = %s;',
+                                      (nation, template, recruiter_id))
+
+                await conn.commit()
+                await interaction.followup.send("Registration complete!", ephemeral=True, delete_after=30)
+
+    async def on_error(self, interation: discord.Interaction, error: Exception):
+        await interation.followup.send(f"An error occurred: {error}", ephemeral=True, delete_after=30)
 
 
-def get_recruit_embed(user: discord.User, bot: RecruitBot, rtype: RecruitType) -> \
-        Tuple[discord.Embed, RecruitView | discord.ui.Button]:
-    recruiter = bot.rusers.get(user)
+class RecruitView(View):
+    def __init__(self, bot: Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
 
-    if recruiter.allow_recruitment_at > datetime.now(timezone.utc):
-        raise LastRecruitTooRecent(user, (recruiter.allow_recruitment_at - datetime.now(timezone.utc)).total_seconds())
+    @discord.ui.button(label='Recruit', style=discord.ButtonStyle.blurple, custom_id='recruitment_view:recruit')
+    async def recruit(self, interaction: discord.Interaction, _button: discord.ui.button):
+        embed, view = await create_recruitment_response(interaction.user, self.bot)
+        view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
+        await self.bot.update_status()
 
-    color = int("2d0001", 16)
+    @discord.ui.button(label='Register', style=discord.ButtonStyle.blurple, custom_id='recruitment_view:register')
+    async def register(self, interaction: discord.Interaction, _button: discord.ui.button):
+        await interaction.response.send_modal(RegistrationModal(self.bot))
 
-    if rtype == RecruitType.WELCOME:
-        if not recruiter.welcome_template:
-            raise NoWelcomeTemplate(user)
+    async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
+        await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True, delete_after=30)
 
-        nation = bot.welcome_queue.get_nations(user=user, return_count=1)[0]
 
-        embed = discord.Embed(title="Welcome", color=color)
-        embed.add_field(name="Nation", value=f"https://www.nationstates.net/nation={nation}")
-        embed.add_field(name="Template", value=f"```{recruiter.welcome_template}```", inline=False)
-        embed.set_footer(
-            text=f"Initiated by {recruiter.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
+class TelegramView(View):
+    message: discord.Message
 
-        view = RecruitView()
+    def __init__(self):
+        super().__init__(timeout=30)
+
+    async def on_timeout(self):
+        await self.message.edit(view=None)
+        self.stop()
+
+
+async def create_recruitment_response(user: discord.User, bot: Bot):
+    recruiter = await bot.get_recruiter(user.id)
+
+    if not recruiter:
+        raise NotRegistered(user)
+    else:
+        nations = bot.queue.get_nations(user=user)
+
+        embed = discord.Embed(title=f"Recruit", color=int("2d0001", 16))
+        embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
+        embed.add_field(name="Template", value=f"```{recruiter.template}```", inline=False)
+        embed.set_footer(text=f"Initiated by {recruiter.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
+
+        view = TelegramView()
         view.add_item(discord.ui.Button(label="Open Telegram", style=discord.ButtonStyle.link,
-                                        url=f"https://www.nationstates.net/page=compose_telegram?tgto={nation}&message=%25{recruiter.welcome_template}%25"))
-
-        recruiter.set_next_recruitment(1)
-        bot.daily.info(f"{recruiter.nation}")
+                                        url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25"))
 
         return embed, view
-
-    nations = bot.queue.get_nations(user=user)
-
-    embed = discord.Embed(title=f"Recruit", color=color)
-    embed.add_field(name="Nations", value="\n".join(
-        [f"https://www.nationstates.net/nation={nation}" for nation in nations]))
-    embed.add_field(name="Template",
-                    value=f"```{recruiter.template}```", inline=False)
-    embed.set_footer(
-        text=f"Initiated by {recruiter.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
-
-    match rtype:
-        case RecruitType.COMMAND:
-
-            # link buttons can't be created in a subclassed view, so this is basically
-            # an empty view with nothing but an on_timeout method
-            view = RecruitView()
-            view.add_item(discord.ui.Button(label="Open Telegram", style=discord.ButtonStyle.link,
-                                            url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25"))
-
-        case RecruitType.SESSION:
-            view = discord.ui.Button(label="Open Telegram", style=discord.ButtonStyle.link,
-                                     url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25")
-
-    recruiter.set_next_recruitment(len(nations))
-    bot.daily.info(f"{recruiter.nation} {len(nations)}")
-
-    return embed, view

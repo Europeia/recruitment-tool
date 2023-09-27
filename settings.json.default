@@ -1,5 +1,10 @@
 {
-  "operator": "The United Peoples of Centrism",
+  "dbHost": "localhost",
+  "dbPort": 3306,
+  "dbUser": "",
+  "dbPassword": "",
+  "dbName": "ns"
+  "operator": "UPC",
   "guildId": 0,
   "reportChannelId": 0,
   "recruitChannelId": 0,
