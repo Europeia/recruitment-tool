@@ -102,6 +102,8 @@ class Bot(commands.Bot):
             async with conn.cursor() as cur:
                 num = await cur.execute('SELECT nation, recruitTemplate, allowRecruitmentAt FROM users WHERE discordId = %s;', (user_id,))
 
+                # await conn.commit()
+
                 if num == 0:
                     return None
                 else:

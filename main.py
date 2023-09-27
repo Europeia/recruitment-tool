@@ -13,7 +13,8 @@ async def main():
             port=configInstance.data.db_port,
             user=configInstance.data.db_user,
             password=configInstance.data.db_password,
-            db=configInstance.data.db_name
+            db=configInstance.data.db_name,
+            autocommit=True
         )
 
         bot = Bot(session, pool)

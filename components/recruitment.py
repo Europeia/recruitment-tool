@@ -27,27 +27,24 @@ class RegistrationModal(Modal, title="Registration"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 nation = self.nation.value.strip().lower().replace(" ", "_")
                 template = self.recruitment_template.value.replace("%", "")
-                num = await cur.execute('SELECT id FROM users WHERE discordId = %s;', (interaction.user.id,))
+                recruiter = await self.bot.get_recruiter(interaction.user.id)
 
-                if num == 0:
+                if recruiter:
+                    await cur.execute('UPDATE users SET nation = %s, recruitTemplate = %s WHERE discordId = %s;',
+                                      (nation, template, recruiter.discord_id))
+                else:
                     await cur.execute('INSERT INTO users (discordId, nation, recruitTemplate) VALUES (%s, %s, %s);',
                                       (interaction.user.id, nation, template))
-                else:
-                    (recruiter_id,) = await cur.fetchone()
-                    await cur.execute('UPDATE users SET nation = %s, recruitTemplate = %s WHERE id = %s;',
-                                      (nation, template, recruiter_id))
 
-                await conn.commit()
-                await interaction.followup.send("Registration complete!", ephemeral=True, delete_after=30)
+                # await conn.commit()
+                await interaction.response.send_message("Registration complete!", ephemeral=True, delete_after=10)
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
-        await interation.followup.send(f"An error occurred: {error}", ephemeral=True, delete_after=30)
+        await interation.followup.send(f"An error occurred: {error}", ephemeral=True)
 
 
 class RecruitView(View):
@@ -66,7 +63,7 @@ class RecruitView(View):
         await interaction.response.send_modal(RegistrationModal(self.bot))
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
-        await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True, delete_after=30)
+        await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
 
 class TelegramView(View):
@@ -76,7 +73,8 @@ class TelegramView(View):
         super().__init__(timeout=30)
 
     async def on_timeout(self):
-        await self.message.edit(view=None)
+        if self.message:
+            await self.message.edit(view=None)
         self.stop()
 
 
