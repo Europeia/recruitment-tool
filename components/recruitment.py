@@ -72,21 +72,21 @@ class ReportModal(Modal, title="Recruitment Report"):
 
     start_time = discord.ui.TextInput(
         label="Start Time",
-        placeholder="2023-01-01 00:00:00",
+        placeholder=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         min_length=10,
         max_length=19,
     )
 
     end_time = discord.ui.TextInput(
         label="End Time",
-        placeholder="2023-10-10",
+        placeholder=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         min_length=10,
         max_length=19,
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        start_time = datetime.fromisoformat(self.start_time.value)
-        end_time = datetime.fromisoformat(self.end_time.value)
+        start_time = datetime.fromisoformat(self.start_time.value).replace(tzinfo=timezone.utc)
+        end_time = datetime.fromisoformat(self.end_time.value).replace(tzinfo=timezone.utc)
 
         if start_time > end_time:
             raise Exception("Start time must be before end time")
@@ -94,12 +94,8 @@ class ReportModal(Modal, title="Recruitment Report"):
         result = await self.bot.get_telegrams(start_time, end_time)
 
         resp = "\n".join([f"{nation}: {count}" for nation, count in result])
-
-        start_fmt = start_time.strftime("%Y-%m-%d")
-        end_fmt = end_time.strftime("%Y-%m-%d")
-
         await interaction.response.send_message(
-            f"Recruitment Report: {start_fmt} to {end_fmt}\n```{resp}```", ephemeral=True
+            f"Recruitment Report: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```", ephemeral=True
         )
 
     async def on_error(self, interation: discord.Interaction, error: Exception):

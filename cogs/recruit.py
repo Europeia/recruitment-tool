@@ -18,6 +18,18 @@ class Recruit(commands.Cog):
             self.bot.std.info("Starting update loop")
             self.update_loop.start()
 
+    @commands.Cog.listener()
+    async def on_cog_load(self):
+        if not self.update_loop.is_running():
+            self.bot.std.info("Starting update loop")
+            self.update_loop.start()
+
+    @commands.Cog.listener()
+    async def on_cog_unload(self):
+        if self.update_loop.is_running():
+            self.bot.std.info("Stopping update loop")
+            self.update_loop.stop()
+
     @commands.command(name="init", description="Send an empty message to be used for the recruitment home page")
     @commands.has_permissions(administrator=True)
     async def init(self, ctx: commands.Context):

@@ -15,7 +15,7 @@ async def main():
             password=configInstance.data.db_password,
             db=configInstance.data.db_name,
             autocommit=True,
-            # init_command="SET SESSION time_zone='+00:00'"
+            init_command="SET SESSION time_zone='+00:00'"
         )
 
         bot = Bot(session, pool)

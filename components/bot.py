@@ -89,7 +89,7 @@ class Bot(commands.Bot):
     async def setup_hook(self):
         import components.recruitment
 
-        default_cogs = ['base', 'recruit', 'test', 'error_handler']
+        default_cogs = ['base', 'recruit', 'error_handler']
 
         for cog in default_cogs:
             await self.load_extension(f"cogs.{cog}")
