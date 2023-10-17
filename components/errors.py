@@ -25,6 +25,13 @@ class NoRecruiterRole(commands.CommandError):
         super().__init__(message=f"{self.user.name} missing the recruiter role")
 
 
+class NotRecruitManager(commands.CommandError):
+    def __init__(self, user: discord.User):
+        self.user = user
+
+        super().__init__(message=f"{self.user.name} is not a recruit manager")
+
+        
 class NotRegistered(commands.CommandError):
     def __init__(self, user: discord.User):
         self.user = user

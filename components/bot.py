@@ -4,13 +4,13 @@ import aiomysql
 import discord
 
 from bs4 import BeautifulSoup as bs
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from discord.ext import commands
 from logging import Logger
 from typing import List, Optional
 
 from components.config.config_manager import configInstance
-from components.errors import TooManyRequests
+from components.errors import TooManyRequests, NotRegistered
 from components.logger import standard_logger
 from components.queue import Queue
 from components.recruiter import Recruiter
@@ -97,19 +97,62 @@ class Bot(commands.Bot):
 
         self.add_view(components.recruitment.RecruitView(self))
 
-    async def get_recruiter(self, user_id: int) -> Recruiter | None:
-        async with self.pool.acquire() as conn:
+    async def get_recruiter(self, user: discord.User) -> Recruiter:
+        async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                num = await cur.execute('SELECT nation, recruitTemplate, allowRecruitmentAt FROM users WHERE discordId = %s;', (user_id,))
+                num = await cur.execute('SELECT nation, recruitTemplate, allowRecruitmentAt FROM users WHERE discordId = %s;', (user.id,))
+
+                # await conn.commit()
+
+                if num == 0:
+                    raise NotRegistered(user)
+                else:
+                    (nation, template, allow_recruitment_at) = await cur.fetchone()
+
+                    return Recruiter(nation, template, user.id, allow_recruitment_at)
+
+    async def get_recruiter_id(self, user: discord.User) -> Optional[int]:
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                num = await cur.execute('SELECT id FROM users WHERE discordId = %s;', (user.id,))
 
                 # await conn.commit()
 
                 if num == 0:
                     return None
                 else:
-                    (nation, template, allow_recruitment_at) = await cur.fetchone()
+                    return (await cur.fetchone())[0]
 
-                    return Recruiter(nation, template, user_id, allow_recruitment_at)
+    async def set_next_recruitment_at(self, user: discord.User, nation_count: int):
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                next_recruitment_timestamp = datetime.now(timezone.utc) + timedelta(seconds=12 * nation_count)
+
+                await cur.execute('UPDATE users SET allowRecruitmentAt = %s WHERE discordId = %s;', (next_recruitment_timestamp, user.id))
+
+    async def update_telegram_count(self, user: discord.User, nation_count: int):
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    'INSERT INTO telegrams (recruiterId, nationCount) VALUES ((SELECT id FROM users WHERE discordId = %s), %s)',
+                    (user.id, nation_count)
+                )
+
+    async def get_telegrams(self, start_time: datetime, end_time: datetime):
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    '''SELECT users.nation, SUM(nationCount) AS 'telegrams' \
+                    FROM telegrams \
+                    JOIN users on users.id = telegrams.recruiterId \
+                    WHERE timestamp BETWEEN %s AND %s \
+                    GROUP BY recruiterId \
+                    ORDER BY telegrams DESC;
+                    ''',
+                    (start_time, end_time)
+                )
+
+                return await cur.fetchall()
 
     async def request(self, url: str) -> bs:
         current_time = datetime.now(timezone.utc)

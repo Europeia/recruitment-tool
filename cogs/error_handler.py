@@ -9,6 +9,7 @@ class Error(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
+        self.bot.std.error(error)
         await ctx.reply(f"{error}\n\n{type(error)}")
 
 

@@ -21,7 +21,7 @@ class Recruit(commands.Cog):
     @commands.command(name="init", description="Send an empty message to be used for the recruitment home page")
     @commands.has_permissions(administrator=True)
     async def init(self, ctx: commands.Context):
-        await ctx.send("Hello, world!", view=RecruitView(self.bot.pool, self.bot.std))
+        await ctx.send("Hello, world!", view=RecruitView(self.bot))
 
     @tasks.loop(seconds=15)
     async def update_loop(self):
