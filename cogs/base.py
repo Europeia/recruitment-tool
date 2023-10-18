@@ -1,6 +1,18 @@
+import discord
+
 from discord.ext import commands
 
 from components.bot import Bot
+
+
+def is_authorized():
+    def predicate(ctx: commands.Context):
+        if not (discord.utils.get(ctx.author.roles, name="Admin") or discord.utils.get(ctx.author.roles, name="Recruit Manager")):
+            raise commands.MissingPermissions(["Admin", "Recruit Manager"])
+
+        return True
+
+    return commands.check(predicate)
 
 
 class Base(commands.Cog):
@@ -8,6 +20,7 @@ class Base(commands.Cog):
         self.bot = bot
 
     @commands.hybrid_command(name="sync", with_app_command=True, description="Sync slash commands")
+    @is_authorized()
     async def sync(self, ctx: commands.Context):
         await ctx.defer()
 
@@ -16,15 +29,18 @@ class Base(commands.Cog):
         await ctx.reply("Done!")
 
     @commands.hybrid_command(name="load", with_app_command=True, description="Load a cog")
+    @is_authorized()
     async def load(self, ctx: commands.Context):
         await ctx.reply("TODO")
 
     @commands.hybrid_command(name="reload", with_app_command=True, description="Reload a cog")
+    @is_authorized()
     async def reload(self, ctx: commands.Context, cog: str):
         await self.bot.reload_extension(f"cogs.{cog}")
         await ctx.reply(f"Reloaded cog: {cog}")
 
     @commands.hybrid_command(name="kill", with_app_command=True, description="Put the bot to sleep")
+    @is_authorized()
     async def kill(self, ctx: commands.Context):
         await ctx.reply("Goodbye!")
         await self.bot.close()
