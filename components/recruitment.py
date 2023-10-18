@@ -72,14 +72,16 @@ class ReportModal(Modal, title="Recruitment Report"):
 
     start_time = discord.ui.TextInput(
         label="Start Time",
-        placeholder=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        placeholder="YYYY-MM-DD HH:MM:SS",
+        default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         min_length=10,
         max_length=19,
     )
 
     end_time = discord.ui.TextInput(
         label="End Time",
-        placeholder=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        placeholder="YYYY-MM-DD HH:MM:SS",
+        default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         min_length=10,
         max_length=19,
     )
