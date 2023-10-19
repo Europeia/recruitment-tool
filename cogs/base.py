@@ -28,12 +28,6 @@ class Base(commands.Cog):
 
         await ctx.reply("Done!")
 
-    @commands.hybrid_command(name="load", with_app_command=True, description="Load a cog")
-    @is_authorized()
-    async def load(self, ctx: commands.Context):
-        await self.bot.load_extension(f"cogs.{cog}")
-        await ctx.reply(f"Loaded cog: {cog}")
-
     @commands.hybrid_command(name="reload", with_app_command=True, description="Reload a cog")
     @is_authorized()
     async def reload(self, ctx: commands.Context, cog: str):
