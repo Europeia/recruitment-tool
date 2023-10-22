@@ -65,6 +65,11 @@ class ConfigManager:
         f = open('settings.json', 'w')
 
         data = {
+            "dbHost": self._data._db_host,
+            "dbPort": self._data._db_port,
+            "dbUser": self._data._db_user,
+            "dbPassword": self._data._db_password,
+            "dbName": self._data._db_name,
             "operator": self._data._operator,
             "guildId": self._data._guild.id,
             "recruitChannelId": self._data._recruit_channel_id,
@@ -72,7 +77,6 @@ class ConfigManager:
             "reportChannelId": self._data._report_channel_id,
             "statusMessageId": self._data._status_message_id,
             "pollingRate": self._data._polling_rate,
-            "period": self._data._period,
             "periodMax": self._data._period_max,
             "botToken": self._data._bot_token,
             "recruitmentExceptions": self._data._recruitment_exceptions

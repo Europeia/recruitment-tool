@@ -3,67 +3,44 @@ import discord
 from discord.ext import commands
 
 
-class NotRegistered(commands.CommandError):
-    user: discord.User
-
-    def __init__(self, user: discord.User):
-        self.user = user
-        super().__init__(message="Not Registered!")
-
-
-class NotRecruiter(commands.CommandError):
-    user: discord.User
-
-    def __init__(self, user: discord.User):
-        self.user = user
-        super().__init__(message="You don't have the 'Recruiter' role!")
-
-
-class NotRecruitmentChannel(commands.CommandError):
-    user: discord.User
-
-    def __init__(self, user: discord.User):
-        self.user = user
-        super().__init__(message="Wrong channel!")
-
-
 class EmptyQueue(commands.CommandError):
-    user: discord.User
-
     def __init__(self, user: discord.User):
         self.user = user
-        super().__init__(message="The queue is empty!")
+
+        super().__init__(message=f"queue empty")
 
 
-class LastRecruitTooRecent(commands.CommandError):
-    user: discord.User
-    retry_in: float
-
-    def __init__(self, user: discord.User, retry_in: float):
+class LastRecruitmentTooRecent(commands.CommandError):
+    def __init__(self, user: discord.User, reset_in: float):
         self.user = user
-        self.retry_in = retry_in
-        super().__init__(message="You have already recruited someone recently!")
+        self.reset_in = reset_in
+
+        super().__init__(message=f"{self.user.name}'s last recruitment was too recent, reset in {self.reset_in:.2f} seconds.")
 
 
-class SessionAlreadyStarted(commands.CommandError):
-    user: discord.User
-
+class NoRecruiterRole(commands.CommandError):
     def __init__(self, user: discord.User):
         self.user = user
-        super().__init__(message="You already have a session started!")
+
+        super().__init__(message=f"{self.user.name} missing the recruiter role")
 
 
-class ActiveSession(commands.CommandError):
-    user: discord.User
-
+class NotRecruitManager(commands.CommandError):
     def __init__(self, user: discord.User):
         self.user = user
-        super().__init__(message="You cannot use /recruit while in a session!")
 
+        super().__init__(message=f"{self.user.name} is not a recruit manager")
 
-class NoWelcomeTemplate(commands.CommandError):
-    user: discord.User
-
+        
+class NotRegistered(commands.CommandError):
     def __init__(self, user: discord.User):
         self.user = user
-        super().__init__("No welcome template")
+
+        super().__init__(message=f"{self.user.name} has not registered as a recruiter")
+
+
+class TooManyRequests(commands.CommandError):
+    def __init__(self, reset_in: float):
+        self.reset_in = reset_in
+
+        super().__init__(message=f"too many requests made in the current bucket, reset in {reset_in:.2f} seconds.")
