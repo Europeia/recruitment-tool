@@ -31,7 +31,7 @@ class NotRecruitManager(commands.CommandError):
 
         super().__init__(message=f"{self.user.name} is not a recruit manager")
 
-        
+
 class NotRegistered(commands.CommandError):
     def __init__(self, user: discord.User):
         self.user = user
@@ -44,3 +44,11 @@ class TooManyRequests(commands.CommandError):
         self.reset_in = reset_in
 
         super().__init__(message=f"too many requests made in the current bucket, reset in {reset_in:.2f} seconds.")
+
+
+class NationNotFound(commands.CommandError):
+    def __init__(self, user: discord.User, nation: str):
+        self.user = user
+        self.nation = nation
+
+        super().__init__(message=f"{self.nation} does not exist")
