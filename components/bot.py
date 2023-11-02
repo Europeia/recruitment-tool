@@ -100,16 +100,17 @@ class Bot(commands.Bot):
     async def get_recruiter(self, user: discord.User) -> Recruiter:
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                num = await cur.execute('SELECT nation, recruitTemplate, allowRecruitmentAt FROM users WHERE discordId = %s;', (user.id,))
+                num = await cur.execute('SELECT nation, recruitTemplate, allowRecruitmentAt, foundedTime FROM users WHERE discordId = %s;',
+                                        (user.id,))
 
                 # await conn.commit()
 
                 if num == 0:
                     raise NotRegistered(user)
                 else:
-                    (nation, template, allow_recruitment_at) = await cur.fetchone()
+                    (nation, template, allow_recruitment_at, founded_time) = await cur.fetchone()
 
-                    return Recruiter(nation, template, user.id, allow_recruitment_at)
+                    return Recruiter(nation, template, user.id, allow_recruitment_at, founded_time.replace(tzinfo=timezone.utc))
 
     async def get_recruiter_id(self, user: discord.User) -> Optional[int]:
         async with self._pool.acquire() as conn:
@@ -123,19 +124,24 @@ class Bot(commands.Bot):
                 else:
                     return (await cur.fetchone())[0]
 
-    async def set_next_recruitment_at(self, user: discord.User, nation_count: int):
+    async def set_next_recruitment_at(self, recruiter: Recruiter, nation_count: int) -> int:
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                next_recruitment_timestamp = datetime.now(timezone.utc) + timedelta(seconds=12 * nation_count)
+                cooldown = recruiter.get_cooldown(nation_count)
 
-                await cur.execute('UPDATE users SET allowRecruitmentAt = %s WHERE discordId = %s;', (next_recruitment_timestamp, user.id))
+                next_recruitment_timestamp = datetime.now(timezone.utc) + timedelta(seconds=cooldown)
 
-    async def update_telegram_count(self, user: discord.User, nation_count: int):
+                await cur.execute('UPDATE users SET allowRecruitmentAt = %s WHERE discordId = %s;',
+                                  (next_recruitment_timestamp, recruiter.discord_id))
+
+                return cooldown
+
+    async def update_telegram_count(self, recruiter: Recruiter, nation_count: int):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
                     'INSERT INTO telegrams (recruiterId, nationCount) VALUES ((SELECT id FROM users WHERE discordId = %s), %s)',
-                    (user.id, nation_count)
+                    (recruiter.discord_id, nation_count)
                 )
 
     async def get_telegrams(self, start_time: datetime, end_time: datetime):

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from discord.ui import Modal, View
 
 from components.bot import Bot
-from components.errors import LastRecruitmentTooRecent, NotRecruitManager
+from components.errors import LastRecruitmentTooRecent, NationNotFound
 
 
 class RegistrationModal(Modal, title="Registration"):
@@ -48,14 +48,23 @@ class RegistrationModal(Modal, title="Registration"):
                 if session_length < 45 or session_length > 600:
                     raise Exception("Session length must be between 45 and 600 seconds")
 
+                try:
+                    founded_time = datetime.fromtimestamp(
+                        int((await self.bot.request(f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=foundedtime")).find(
+                            "FOUNDEDTIME").text))
+                except AttributeError:
+                    raise NationNotFound(interaction.user, nation)
+
                 recruiter_id = await self.bot.get_recruiter_id(interaction.user)
 
                 if recruiter_id:
-                    await cur.execute('UPDATE users SET nation = %s, recruitTemplate = %s, sessionLength = %s WHERE id = %s;',
-                                      (nation, template, session_length, recruiter_id))
+                    await cur.execute(
+                        'UPDATE users SET nation = %s, recruitTemplate = %s, sessionLength = %s, foundedTime = %s WHERE id = %s;',
+                        (nation, template, session_length, founded_time, recruiter_id))
                 else:
-                    await cur.execute('INSERT INTO users (discordId, nation, recruitTemplate, sessionLength) VALUES (%s, %s, %s, %s);',
-                                      (interaction.user.id, nation, template, session_length))
+                    await cur.execute(
+                        'INSERT INTO users (discordId, nation, recruitTemplate, sessionLength, foundedTime) VALUES (%s, %s, %s, %s, %s);',
+                        (interaction.user.id, nation, template, session_length, founded_time))
 
                 # await conn.commit()
                 await interaction.response.send_message("Registration complete!", ephemeral=True, delete_after=10)
@@ -112,8 +121,8 @@ class RecruitView(View):
 
     @discord.ui.button(label='Recruit', style=discord.ButtonStyle.blurple, custom_id='recruitment_view:recruit')
     async def recruit(self, interaction: discord.Interaction, _button: discord.ui.button):
-        embed, view = await create_recruitment_response(interaction.user, self.bot)
-        view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
+        embed, view, delete_after = await create_recruitment_response(interaction.user, self.bot)
+        view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
         await self.bot.update_status()
 
     @discord.ui.button(label='Register', style=discord.ButtonStyle.blurple, custom_id='recruitment_view:register')
@@ -122,10 +131,6 @@ class RecruitView(View):
 
     @discord.ui.button(label='Report', style=discord.ButtonStyle.blurple, custom_id='recruitment_view:report')
     async def report(self, interaction: discord.Interaction, _button: discord.ui.button):
-        # check if the user has the 'Recruit Manager' role
-        if not discord.utils.get(interaction.user.roles, name="Recruit Manager"):
-            raise NotRecruitManager(interaction.user)
-
         await interaction.response.send_modal(ReportModal(self.bot))
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
@@ -136,8 +141,8 @@ class RecruitView(View):
 class TelegramView(View):
     message: discord.Message
 
-    def __init__(self):
-        super().__init__(timeout=30)
+    def __init__(self, cooldown: int):
+        super().__init__(timeout=3 + cooldown)
 
     async def on_timeout(self):
         if self.message:
@@ -157,16 +162,16 @@ async def create_recruitment_response(user: discord.User, bot: Bot):
 
     nations = bot.queue.get_nations(user=user)
 
-    await bot.set_next_recruitment_at(user, len(nations))
-    await bot.update_telegram_count(user, len(nations))
+    cooldown = await bot.set_next_recruitment_at(recruiter, len(nations))
+    await bot.update_telegram_count(recruiter, len(nations))
 
     embed = discord.Embed(title=f"Recruit", color=int("2d0001", 16))
     embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
     embed.add_field(name="Template", value=f"```{recruiter.template}```", inline=False)
     embed.set_footer(text=f"Initiated by {recruiter.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
 
-    view = TelegramView()
+    view = TelegramView(cooldown=cooldown)
     view.add_item(discord.ui.Button(label="Open Telegram", style=discord.ButtonStyle.link,
                                     url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25"))
 
-    return embed, view
+    return embed, view, cooldown
