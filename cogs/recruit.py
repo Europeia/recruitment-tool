@@ -207,7 +207,7 @@ class TelegramView(View):
 class RecruitmentCog(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.pattern = re.compile(r'^\d+_|_\d+$')
+        self.pattern = re.compile(r'^\d+|\d+$')
 
     @app_commands.command(name='register', description='Register a channel for recruitment')
     @commands.has_permissions(administrator=True)

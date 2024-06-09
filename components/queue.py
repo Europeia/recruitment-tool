@@ -111,7 +111,7 @@ class QueueList:
         if not new_nations:
             return
 
-        self.last_update = new_nations[0].founding_time
+        self.last_update = new_nations[-1].founding_time
 
     def get_nations(self, user: discord.User, channel_id: int, return_count: int = 8) -> List[str]:
         return self.queues[channel_id].get_nations(user, return_count)
