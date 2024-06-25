@@ -107,6 +107,7 @@ class QueueList:
     def update(self, new_nations: List[Nation]):
         for queue in self.queues.values():
             queue.update(new_nations)
+            queue.prune()
 
         if not new_nations:
             return

@@ -106,3 +106,4 @@ logs/*
 settings.json
 config.json
 queue.txt
+.run/Start Bot.run.xml
