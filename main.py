@@ -18,8 +18,7 @@ async def main():
             init_command="SET SESSION time_zone='+00:00'"
         )
 
-        bot = Bot(session, pool)
-        async with bot:
+        async with Bot(session, pool) as bot:
             await bot.start(configInstance.data.bot_token)
 
 

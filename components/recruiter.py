@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 
 @dataclass
 class Recruiter:
+    id: int
     nation: str
     template: str
     discord_id: int
+    channel_id: int
     next_recruitment_at: datetime
     founded_time: datetime
 
