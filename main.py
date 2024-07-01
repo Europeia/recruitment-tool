@@ -3,11 +3,6 @@ import aiomysql
 import asyncio
 
 from components.bot import Bot
-import aiohttp
-import aiomysql
-import asyncio
-
-from components.bot import Bot
 from components.config.config_manager import configInstance
 
 
