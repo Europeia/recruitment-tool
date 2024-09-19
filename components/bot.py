@@ -255,7 +255,7 @@ class Bot(commands.Bot):
 
         view = TelegramView(cooldown=cooldown)
         view.add_item(discord.ui.Button(label="Open Telegram", style=discord.ButtonStyle.link,
-                                        url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25"))
+                                        url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25&generated_by=Asperta+Recruitment+Bot"))
 
         return embed, view, cooldown
 
