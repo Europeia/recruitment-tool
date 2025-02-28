@@ -27,7 +27,7 @@ class Queue:
         self.last_updated = datetime.now(timezone.utc)
 
     def __repr__(self):
-        return f'<Queue nations={len(self.nations)} last_updated={self.last_updated}>'
+        return f"<Queue nations={len(self.nations)} last_updated={self.last_updated}>"
 
     def update(self, new_nations: List[Nation]):
         for nation in new_nations:
@@ -57,8 +57,11 @@ class Queue:
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
-        self.nations = [nation for nation in self.nations if
-                        (current_time - nation.founding_time).total_seconds() < 3600]
+        self.nations = [
+            nation
+            for nation in self.nations
+            if (current_time - nation.founding_time).total_seconds() < 3600
+        ]
 
     def purge(self):
         self.nations = []
@@ -82,17 +85,20 @@ class QueueList:
         self.last_update = datetime.now(timezone.utc)
 
     def __repr__(self):
-        return f'<QueueList queues={self.queues}>'
+        return f"<QueueList queues={self.queues}>"
 
     async def init(self):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute('SELECT channelId FROM recruitment_channels;')
+                await cur.execute("SELECT channelId FROM recruitment_channels;")
                 channels: List[int] = [channel[0] for channel in await cur.fetchall()]
 
                 for channel in channels:
-                    await cur.execute('SELECT region FROM exceptions WHERE channelId = (SELECT id FROM '
-                                      'recruitment_channels WHERE channelId = %s);', (channel,))
+                    await cur.execute(
+                        "SELECT region FROM exceptions WHERE channelId = (SELECT id FROM "
+                        "recruitment_channels WHERE channelId = %s);",
+                        (channel,),
+                    )
 
                     regions = [region[0] for region in await cur.fetchall()]
 
@@ -105,6 +111,8 @@ class QueueList:
         self.queues[channel_id] = Queue(whitelist=regions)
 
     def update(self, new_nations: List[Nation]):
+        new_nations = [nation for nation in new_nations if nation.region != "europeia"]
+
         for queue in self.queues.values():
             queue.update(new_nations)
             queue.prune()
@@ -114,7 +122,9 @@ class QueueList:
 
         self.last_update = new_nations[-1].founding_time
 
-    def get_nations(self, user: discord.User, channel_id: int, return_count: int = 8) -> List[str]:
+    def get_nations(
+        self, user: discord.User, channel_id: int, return_count: int = 8
+    ) -> List[str]:
         return self.queues[channel_id].get_nations(user, return_count)
 
     def get_nation_count(self, channel_id: int) -> int:
