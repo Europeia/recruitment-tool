@@ -294,8 +294,13 @@ class Bot(commands.Bot):
                         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
                         embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
 
-                        channel: discord.TextChannel = self.get_channel(channel_id)
-                        message = await channel.fetch_message(message_id)
+                        try:
+                            channel: discord.TextChannel = self.get_channel(channel_id)
 
-                        await message.edit(embed=embed)
+                            message = await channel.fetch_message(message_id)
+
+                            await message.edit(embed=embed)
+                        except Exception as e:
+                            self._std.error("Error updating channel id: " + str(channel_id));
+                            self._std.error(f"Error in update_loop: {e}")
 
