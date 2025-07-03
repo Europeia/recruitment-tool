@@ -57,11 +57,7 @@ class Queue:
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
-        self.nations = [
-            nation
-            for nation in self.nations
-            if (current_time - nation.founding_time).total_seconds() < 3600
-        ]
+        self.nations = [nation for nation in self.nations if (current_time - nation.founding_time).total_seconds() < 3600]
 
     def purge(self):
         self.nations = []
@@ -95,8 +91,7 @@ class QueueList:
 
                 for channel in channels:
                     await cur.execute(
-                        "SELECT region FROM exceptions WHERE channelId = (SELECT id FROM "
-                        "recruitment_channels WHERE channelId = %s);",
+                        "SELECT region FROM exceptions WHERE channelId = (SELECT id FROM recruitment_channels WHERE channelId = %s);",
                         (channel,),
                     )
 
@@ -122,9 +117,7 @@ class QueueList:
 
         self.last_update = new_nations[-1].founding_time
 
-    def get_nations(
-        self, user: discord.User, channel_id: int, return_count: int = 8
-    ) -> List[str]:
+    def get_nations(self, user: discord.User, channel_id: int, return_count: int = 8) -> List[str]:
         return self.queues[channel_id].get_nations(user, return_count)
 
     def get_nation_count(self, channel_id: int) -> int:

@@ -31,10 +31,11 @@ class Error(commands.Cog):
         print(type(error))
 
         if isinstance(error, errors.WhitelistError):
-            await interaction.response.send_message(f'This server is not whitelisted for recruitment. Please contact '
-                                                    f'a bot administrator.', ephemeral=True)
+            await interaction.response.send_message(
+                f"This server is not whitelisted for recruitment. Please contact a bot administrator.", ephemeral=True
+            )
         else:
-            await interaction.response.send_message(f'An error occurred:\n```{error}```\n{type(error)}', ephemeral=True)
+            await interaction.response.send_message(f"An error occurred:\n```{error}```\n{type(error)}", ephemeral=True)
 
 
 async def setup(bot: Bot):

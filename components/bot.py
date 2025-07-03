@@ -1,12 +1,12 @@
+from datetime import datetime, timedelta, timezone
+from logging import Logger
+from typing import List, Optional
+
 import aiohttp
 import aiomysql
 import discord
-
 from bs4 import BeautifulSoup as bs
 from discord.ext import commands
-from datetime import datetime, timezone, timedelta
-from logging import Logger
-from typing import List, Optional
 
 from components.config.config_manager import configInstance
 from components.errors import LastRecruitmentTooRecent, NotRegistered, TooManyRequests
@@ -16,7 +16,6 @@ from components.recruiter import Recruiter
 
 
 class Bot(commands.Bot):
-
     @property
     def headers(self) -> dict:
         return self._headers
@@ -67,11 +66,9 @@ class Bot(commands.Bot):
         intents = discord.Intents.default()
         intents.message_content = True
 
-        super().__init__(command_prefix='!', intents=intents)
+        super().__init__(command_prefix="!", intents=intents)
 
-        self._headers = {
-            'User-Agent': f'Aperta Recruitment Bot, developed by nation=upc, run by {configInstance.data.operator}'
-        }
+        self._headers = {"User-Agent": f"Aperta Recruitment Bot, developed by nation=upc, run by {configInstance.data.operator}"}
         self._session = session
         self._pool = pool
         self._std = standard_logger()
@@ -90,16 +87,16 @@ class Bot(commands.Bot):
                 await cur.execute("SELECT channelId, messageId FROM recruitment_channels;")
                 recruitment_views = await cur.fetchall()
 
-                for (channel_id, message_id) in recruitment_views:
+                for channel_id, message_id in recruitment_views:
                     self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
 
         await self._queue_list.init()
 
-        default_cogs = ['base', 'recruit', 'error_handler']
+        default_cogs = ["base", "recruit", "error_handler"]
 
         for cog in default_cogs:
             await self.load_extension(f"cogs.{cog}")
-            print(f'Loaded cog: {cog}')
+            print(f"Loaded cog: {cog}")
 
     async def register_recruitment_channel(self, server_id: int, channel_id: int, message_id: int):
         async with self._pool.acquire() as conn:
@@ -107,7 +104,8 @@ class Bot(commands.Bot):
                 try:
                     await cur.execute(
                         "INSERT INTO recruitment_channels (serverId, channelId, messageId) VALUES (%s, %s, %s);",
-                        (server_id, channel_id, message_id))
+                        (server_id, channel_id, message_id),
+                    )
                 except aiomysql.IntegrityError:
                     # TODO make this into a custom exception!!
                     raise Exception("Channel already registered")
@@ -132,27 +130,28 @@ class Bot(commands.Bot):
                 raise TooManyRequests(self.reset_in)
 
         async with self._session.get(url, headers=self._headers) as resp:
-            self._ratelimit = int(resp.headers['RateLimit-limit'])
-            self._policy = int(resp.headers['RateLimit-policy'].split(';w=')[1])
-            self._remaining = int(resp.headers['RateLimit-remaining'])
-            self._reset_in = int(resp.headers['RateLimit-reset'])
+            self._ratelimit = int(resp.headers["RateLimit-limit"])
+            self._policy = int(resp.headers["RateLimit-policy"].split(";w=")[1])
+            self._remaining = int(resp.headers["RateLimit-remaining"])
+            self._reset_in = int(resp.headers["RateLimit-reset"])
             self._request_timestamps.append(current_time)
 
             text = await resp.text()
 
-            return bs(text, 'xml')
+            return bs(text, "xml")
 
     async def get_recruiter_id(self, user: discord.User, channel_id: int) -> Optional[int]:
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 num = await cur.execute(
-                    '''SELECT id 
+                    """SELECT id 
                     FROM users 
                     WHERE discordId = %s 
                     AND channelId = (
                         SELECT id FROM recruitment_channels WHERE channelId = %s
-                    );''',
-                    (user.id, channel_id))
+                    );""",
+                    (user.id, channel_id),
+                )
 
                 if num == 0:
                     return None
@@ -163,22 +162,24 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 num = await cur.execute(
-                    '''SELECT id, nation, recruitTemplate, allowRecruitmentAt, foundedTime
+                    """SELECT id, nation, recruitTemplate, allowRecruitmentAt, foundedTime
                     FROM users
                     WHERE discordId = %s
                     AND channelId = (
                         SELECT id FROM recruitment_channels WHERE channelId = %s
                     );
-                    ''',
-                    (user.id, channel_id))
+                    """,
+                    (user.id, channel_id),
+                )
 
                 if num == 0:
                     raise NotRegistered(user)
                 else:
                     (dbid, nation, template, allow_recruitment_at, founded_time) = await cur.fetchone()
 
-                    return Recruiter(dbid, nation, template, user.id, channel_id, allow_recruitment_at,
-                                     founded_time.replace(tzinfo=timezone.utc))
+                    return Recruiter(
+                        dbid, nation, template, user.id, channel_id, allow_recruitment_at, founded_time.replace(tzinfo=timezone.utc)
+                    )
 
     async def set_next_recruitment_at(self, recruiter: Recruiter, nation_count: int) -> int:
         async with self._pool.acquire() as conn:
@@ -188,11 +189,11 @@ class Bot(commands.Bot):
                 next_recruitment_timestamp = datetime.now(timezone.utc) + timedelta(seconds=cooldown)
 
                 await cur.execute(
-                    '''UPDATE users
+                    """UPDATE users
                     SET allowRecruitmentAt = %s
                     WHERE id = %s;
-                    ''',
-                    (next_recruitment_timestamp, recruiter.id)
+                    """,
+                    (next_recruitment_timestamp, recruiter.id),
                 )
                 return cooldown
 
@@ -200,12 +201,12 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    '''INSERT INTO telegrams (recruiterId, nationCount, channelId)
+                    """INSERT INTO telegrams (recruiterId, nationCount, channelId)
                     VALUES (%s, %s, (
                         SELECT id FROM recruitment_channels WHERE channelId = %s
                     ));
-                    ''',
-                    (recruiter.id, nation_count, recruiter.channel_id)
+                    """,
+                    (recruiter.id, nation_count, recruiter.channel_id),
                 )
 
     async def get_telegrams(self, start_time: datetime, end_time: datetime, channel_id: int):
@@ -215,7 +216,7 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    '''SELECT users.nation, SUM(nationCount) AS 'tgcount'
+                    """SELECT users.nation, SUM(nationCount) AS 'tgcount'
                     FROM telegrams
                     JOIN users on users.id = telegrams.recruiterId
                     WHERE telegrams.timestamp BETWEEN %s AND %s
@@ -224,8 +225,8 @@ class Bot(commands.Bot):
                     )
                     GROUP BY users.id 
                     ORDER BY tgcount DESC;
-                    ''',
-                    (start_time, end_time, channel_id)
+                    """,
+                    (start_time, end_time, channel_id),
                 )
 
                 return await cur.fetchall()
@@ -247,15 +248,19 @@ class Bot(commands.Bot):
 
         await self.update_telegram_count(recruiter, len(nations))
 
-        embed = discord.Embed(title=f"Recruit", color=int("2d0001", 16))
-        embed.add_field(name="Nations",
-                        value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
+        embed = discord.Embed(title="Recruit", color=int("2d0001", 16))
+        embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
         embed.add_field(name="Template", value=f"```{recruiter.template}```", inline=False)
         embed.set_footer(text=f"Initiated by {recruiter.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
 
         view = TelegramView(cooldown=cooldown)
-        view.add_item(discord.ui.Button(label="Open Telegram", style=discord.ButtonStyle.link,
-                                        url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25&generated_by=Asperta+Recruitment+Bot"))
+        view.add_item(
+            discord.ui.Button(
+                label="Open Telegram",
+                style=discord.ButtonStyle.link,
+                url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25&generated_by=Asperta+Recruitment+Bot",
+            )
+        )
 
         return embed, view, cooldown
 
@@ -271,10 +276,7 @@ class Bot(commands.Bot):
 
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute(
-                        "SELECT messageId FROM recruitment_channels WHERE channelId = %s;",
-                        channel_id
-                    )
+                    await cur.execute("SELECT messageId FROM recruitment_channels WHERE channelId = %s;", channel_id)
 
                     message_id = (await cur.fetchone())[0]
 
@@ -289,10 +291,12 @@ class Bot(commands.Bot):
                     await cur.execute("SELECT channelId, messageId FROM recruitment_channels;")
                     recruitment_views = await cur.fetchall()
 
-                    for (channel_id, message_id) in recruitment_views:
+                    for channel_id, message_id in recruitment_views:
                         embed = discord.Embed(title="Recruitment Queue")
                         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
-                        embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
+                        embed.add_field(
+                            name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>"
+                        )
 
                         try:
                             channel: discord.TextChannel = self.get_channel(channel_id)
@@ -301,6 +305,5 @@ class Bot(commands.Bot):
 
                             await message.edit(embed=embed)
                         except Exception as e:
-                            self._std.error("Error updating channel id: " + str(channel_id));
+                            self._std.error("Error updating channel id: " + str(channel_id))
                             self._std.error(f"Error in update_loop: {e}")
-
