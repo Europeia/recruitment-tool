@@ -18,23 +18,19 @@ class Nation:
 @dataclass
 class Queue:
     whitelist: list[str]
-    nations: list[Nation]
-    last_updated: datetime
+    nations: List[Nation]
 
-    def __init__(self, whitelist: list[str] = None):
+    def __init__(self, whitelist: List[str] = []):
         self.nations = []
-        self.whitelist = whitelist if whitelist else []
-        self.last_updated = datetime.now(timezone.utc)
+        self.whitelist = whitelist
 
     def __repr__(self):
-        return f"<Queue nations={len(self.nations)} last_updated={self.last_updated}>"
+        return f"<Queue nations={len(self.nations)}>"
 
     def update(self, new_nations: List[Nation]):
         for nation in new_nations:
             if nation.region not in self.whitelist:
                 self.nations.insert(0, nation)
-
-        self.last_updated = datetime.now(timezone.utc)
 
     def get_nation_count(self) -> int:
         return len(self.nations)
