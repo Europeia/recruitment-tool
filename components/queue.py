@@ -17,8 +17,37 @@ from components.errors import EmptyQueue
 
 logger = logging.getLogger("main")
 
+PUPPET_REGEX = re.compile(r"^\d+_[a-z0-9_]+|[a-z0-9_]+_\d+$|^[a-z0-9_]+_m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
 FOUNDING_REGEX = re.compile("^@@([a-z0-9_]+)@@ was founded in %%([a-z0-9_]+)%%.?$")
 MOVE_REGEX = re.compile("^@@([a-z0-9_]+)@@ relocated from %%([a-z0-9_]+)%% to %%([a-z0-9_]+)%%.?$")
+
+
+@dataclass
+class Event:
+    id: str
+    htmlstr: str
+    str: str
+    time: int
+
+    @classmethod
+    def from_json(cls, dct) -> Self:
+        return cls(dct["id"], dct["htmlStr"], dct["str"], dct["time"])
+
+    def __repr__(self):
+        return f"<Event id={self.id} data={self.str}>"
+
+
+@dataclass
+class FoundingEvent:
+    nation: str
+    region: str
+
+
+@dataclass
+class MoveEvent:
+    nation: str
+    moved_from: str
+    moved_to: str
 
 
 @dataclass
@@ -30,6 +59,7 @@ class Nation:
 
 class Queue:
     whitelist: list[str]
+    "list of regions that the region associated with this queue will not recruit from"
     nations: List[Nation]
 
     def __init__(self, whitelist: List[str] = []):
@@ -76,25 +106,31 @@ class Queue:
     def remove_from_whitelist(self, region: str):
         self.whitelist.remove(region)
 
+    def insert(self, nation: Nation):
+        if nation.region not in self.whitelist:
+            self.nations.insert(0, nation)
+
 
 class QueueList:
     last_update: datetime
-    pool: aiomysql.Pool
-    queues: dict[int, Queue] = field(default_factory=dict)
+    _pool: aiomysql.Pool
+    _queues: dict[int, Queue] = field(default_factory=dict)
+    _queue_lock: threading.Lock
     _update_thread: threading.Thread
     _running: bool
 
     def __init__(self, pool: aiomysql.Pool):
-        self.pool = pool
-        self.queues = {}
+        self._pool = pool
+        self._queues = {}
         self.last_update = datetime.now(timezone.utc)
+        self._queue_lock = threading.Lock()
         self._running = True
 
     def __repr__(self):
-        return f"<QueueList queues={self.queues}>"
+        return f"<QueueList queues={self._queues}>"
 
     async def __aenter__(self):
-        async with self.pool.acquire() as conn:
+        async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT channelId FROM recruitment_channels;")
                 channels: List[int] = [channel[0] for channel in await cur.fetchall()]
@@ -107,9 +143,9 @@ class QueueList:
 
                     regions = [region[0] for region in await cur.fetchall()]
 
-                    self.queues[channel] = Queue(whitelist=regions)
+                    self.add_channel(channel, regions)
 
-        self._update_thread = threading.Thread(target=self.update)
+        self._update_thread = threading.Thread(target=self._update, daemon=True)
 
         self._update_thread.start()
 
@@ -120,69 +156,49 @@ class QueueList:
         self._update_thread.join()
 
     def channel(self, channel_id: int) -> Queue:
-        return self.queues[channel_id]
+        with self._queue_lock:
+            return self._queues[channel_id]
 
     def add_channel(self, channel_id: int, regions: List[str]):
-        self.queues[channel_id] = Queue(whitelist=regions)
+        with self._queue_lock:
+            self._queues[channel_id] = Queue(whitelist=regions)
 
     def get_nations(self, user: discord.User, channel_id: int, return_count: int = 8) -> List[str]:
-        return self.queues[channel_id].get_nations(user, return_count)
+        with self._queue_lock:
+            return self._queues[channel_id].get_nations(user, return_count)
 
     def get_nation_count(self, channel_id: int) -> int:
-        return self.queues[channel_id].get_nation_count()
+        with self._queue_lock:
+            return self._queues[channel_id].get_nation_count()
 
-    def update(self):
+    def _handle_founding(self, event: FoundingEvent):
+        pass
+
+    def _handle_move(self, event: MoveEvent):
+        pass
+
+    def _handle_events(self):
+        for event in sseclient.SSEClient(requests.get("https://www.nationstates.net/api/founding+move", stream=True)).events():
+            data: Event = json.loads(event.data, object_hook=Event.from_json)
+
+            logger.debug(data)
+
+            if match := FOUNDING_REGEX.match(data.str):
+                self._handle_founding(FoundingEvent(match[1], match[2]))
+            elif match := MOVE_REGEX.match(data.str):
+                self._handle_move(MoveEvent(match[1], match[2], match[3]))
+
+            if not self._running:
+                raise asyncio.CancelledError()
+
+    def _update(self):
         logger.info("starting update thread")
 
         while self._running:
             try:
-                for event in sseclient.SSEClient(requests.get("https://www.nationstates.net/api/founding+move", stream=True)).events():
-                    logger.info(event.data)
-                    if not self._running:
-                        raise asyncio.CancelledError()
-            except:
+                self._handle_events()
+            except asyncio.CancelledError:
+                logger.info("terminating update thread")
+                return
+            except Exception:
                 logger.exception("error in update loop")
-
-        logger.info("terminating update thread")
-
-        # async with sse_client.EventSource(url="https://www.nationstates.net/api/founding+move") as es:
-        #     try:
-        #         async for event in es:
-        #             data: Event = json.loads(event.data, object_hook=Event.from_json)
-
-        #             logger.info(data)
-
-        #             if match := FOUNDING_REGEX.match(data.str):
-        #                 founding = FoundingEvent(match[1], match[2])
-        #                 logger.debug("nation founded: %s", founding.nation)
-        #             elif match := MOVE_REGEX.match(data.str):
-        #                 move = MoveEvent(match[1], match[2], match[3])
-        #                 logger.debug("nation moved: %s", move.nation)
-
-        #     except ConnectionError:
-        #         logger.error("lost connection to NS server")
-
-
-@dataclass
-class Event:
-    id: str
-    htmlstr: str
-    str: str
-    time: int
-
-    @classmethod
-    def from_json(cls, dct) -> Self:
-        return cls(dct["id"], dct["htmlstr"], dct["str"], dct["time"])
-
-
-@dataclass
-class FoundingEvent:
-    nation: str
-    region: str
-
-
-@dataclass
-class MoveEvent:
-    nation: str
-    moved_from: str
-    moved_to: str
