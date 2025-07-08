@@ -1,11 +1,24 @@
 import aiomysql
+import asyncio
 import discord
+import json
+import logging
+import re
+import requests
+import sseclient
+import threading
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Self
 
 from components.errors import EmptyQueue
+
+
+logger = logging.getLogger("main")
+
+FOUNDING_REGEX = re.compile("^@@([a-z0-9_]+)@@ was founded in %%([a-z0-9_]+)%%.?$")
+MOVE_REGEX = re.compile("^@@([a-z0-9_]+)@@ relocated from %%([a-z0-9_]+)%% to %%([a-z0-9_]+)%%.?$")
 
 
 @dataclass
@@ -15,7 +28,6 @@ class Nation:
     founding_time: datetime
 
 
-@dataclass
 class Queue:
     whitelist: list[str]
     nations: List[Nation]
@@ -65,21 +77,23 @@ class Queue:
         self.whitelist.remove(region)
 
 
-@dataclass
 class QueueList:
     last_update: datetime
     pool: aiomysql.Pool
     queues: dict[int, Queue] = field(default_factory=dict)
+    _update_thread: threading.Thread
+    _running: bool
 
     def __init__(self, pool: aiomysql.Pool):
         self.pool = pool
         self.queues = {}
         self.last_update = datetime.now(timezone.utc)
+        self._running = True
 
     def __repr__(self):
         return f"<QueueList queues={self.queues}>"
 
-    async def init(self):
+    async def __aenter__(self):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT channelId FROM recruitment_channels;")
@@ -95,26 +109,80 @@ class QueueList:
 
                     self.queues[channel] = Queue(whitelist=regions)
 
+        self._update_thread = threading.Thread(target=self.update)
+
+        self._update_thread.start()
+
+        return self
+
+    async def __aexit__(self, exc_t, exc_v, exc_tb):
+        self._running = False
+        self._update_thread.join()
+
     def channel(self, channel_id: int) -> Queue:
         return self.queues[channel_id]
 
     def add_channel(self, channel_id: int, regions: List[str]):
         self.queues[channel_id] = Queue(whitelist=regions)
 
-    def update(self, new_nations: List[Nation]):
-        new_nations = [nation for nation in new_nations if nation.region != "europeia"]
-
-        for queue in self.queues.values():
-            queue.update(new_nations)
-            queue.prune()
-
-        if not new_nations:
-            return
-
-        self.last_update = new_nations[-1].founding_time
-
     def get_nations(self, user: discord.User, channel_id: int, return_count: int = 8) -> List[str]:
         return self.queues[channel_id].get_nations(user, return_count)
 
     def get_nation_count(self, channel_id: int) -> int:
         return self.queues[channel_id].get_nation_count()
+
+    def update(self):
+        logger.info("starting update thread")
+
+        while self._running:
+            try:
+                for event in sseclient.SSEClient(requests.get("https://www.nationstates.net/api/founding+move", stream=True)).events():
+                    logger.info(event.data)
+                    if not self._running:
+                        raise asyncio.CancelledError()
+            except:
+                logger.exception("error in update loop")
+
+        logger.info("terminating update thread")
+
+        # async with sse_client.EventSource(url="https://www.nationstates.net/api/founding+move") as es:
+        #     try:
+        #         async for event in es:
+        #             data: Event = json.loads(event.data, object_hook=Event.from_json)
+
+        #             logger.info(data)
+
+        #             if match := FOUNDING_REGEX.match(data.str):
+        #                 founding = FoundingEvent(match[1], match[2])
+        #                 logger.debug("nation founded: %s", founding.nation)
+        #             elif match := MOVE_REGEX.match(data.str):
+        #                 move = MoveEvent(match[1], match[2], match[3])
+        #                 logger.debug("nation moved: %s", move.nation)
+
+        #     except ConnectionError:
+        #         logger.error("lost connection to NS server")
+
+
+@dataclass
+class Event:
+    id: str
+    htmlstr: str
+    str: str
+    time: int
+
+    @classmethod
+    def from_json(cls, dct) -> Self:
+        return cls(dct["id"], dct["htmlstr"], dct["str"], dct["time"])
+
+
+@dataclass
+class FoundingEvent:
+    nation: str
+    region: str
+
+
+@dataclass
+class MoveEvent:
+    nation: str
+    moved_from: str
+    moved_to: str

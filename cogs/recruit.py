@@ -1,14 +1,18 @@
+import asyncio
 import discord
-import re
+import logging
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from discord import app_commands
 from discord.ext import commands, tasks
 from discord.ui import Modal, View
 
+
 from components.bot import Bot
 from components.errors import WhitelistError, NationNotFound
 from components.queue import Nation
+
+logger = logging.getLogger("main")
 
 
 class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel"):
@@ -192,7 +196,6 @@ class TelegramView(View):
 class RecruitmentCog(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.pattern = re.compile(r"^\d+|\d+$")
 
     @app_commands.command(name="register", description="Register a channel for recruitment")
     @commands.has_permissions(administrator=True)
@@ -258,53 +261,6 @@ class RecruitmentCog(commands.Cog):
             regions = "\n".join(self.bot.queue_list.channel(interaction.channel.id).whitelist)
 
             await interaction.response.send_message(f"Whitelisted regions: \n{regions}", ephemeral=True)
-
-    @tasks.loop(seconds=15)
-    async def update_loop(self):
-        try:
-            await self.update_queue()
-        except Exception as e:
-            self.bot.std.error(f"Error in update_loop: {e}")
-
-    async def update_queue(self):
-        self.bot.std.info("Updating queue")
-
-        new_nations = await self.bot.request("https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails")
-
-        nations = []
-
-        for raw_nation in reversed(new_nations.find_all("NEWNATION")):
-            nation_name = raw_nation.attrs["name"]
-
-            if not self.pattern.search(nation_name) and int(raw_nation.FOUNDEDTIME.text) > self.bot.queue_list.last_update.timestamp():
-                nations.append(
-                    Nation(
-                        name=raw_nation.attrs["name"],
-                        region=raw_nation.REGION.text,
-                        founding_time=datetime.fromtimestamp(int(raw_nation.FOUNDEDTIME.text), timezone.utc),
-                    )
-                )
-
-        self.bot.queue_list.update(nations)
-        await self.bot.update_status_embeds()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if not self.update_loop.is_running():
-            self.bot.std.info("Starting update loop")
-            self.update_loop.start()
-
-    @commands.Cog.listener()
-    async def on_cog_load(self):
-        if not self.update_loop.is_running():
-            self.bot.std.info("Starting update loop")
-            self.update_loop.start()
-
-    @commands.Cog.listener()
-    async def on_cog_unload(self):
-        if self.update_loop.is_running():
-            self.bot.std.info("Stopping update loop")
-            self.update_loop.stop()
 
 
 async def setup(bot: Bot):

@@ -62,7 +62,7 @@ class Bot(commands.Bot):
         """The recruitment queue"""
         return self._queue_list
 
-    def __init__(self, session: aiohttp.ClientSession, pool: aiomysql.Pool):
+    def __init__(self, session: aiohttp.ClientSession, ql: QueueList, pool: aiomysql.Pool):
         intents = discord.Intents.default()
         intents.message_content = True
 
@@ -77,7 +77,7 @@ class Bot(commands.Bot):
         self._remaining = None
         self._reset_in = None
         self._request_timestamps = []
-        self._queue_list = QueueList(pool)
+        self._queue_list = ql
 
     async def setup_hook(self):
         import cogs.recruit
@@ -89,8 +89,6 @@ class Bot(commands.Bot):
 
                 for channel_id, message_id in recruitment_views:
                     self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
-
-        await self._queue_list.init()
 
         default_cogs = ["base", "recruit", "error_handler"]
 
