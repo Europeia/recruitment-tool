@@ -198,6 +198,7 @@ class RecruitmentCog(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="register", description="Register a channel for recruitment")
+    @app_commands.guild_only()
     @commands.has_permissions(administrator=True)
     async def register_recruitment_channel(self, interaction: discord.Interaction):
         async with self.bot.pool.acquire() as conn:
@@ -208,6 +209,25 @@ class RecruitmentCog(commands.Cog):
                     raise WhitelistError(interaction.user, interaction.guild)
 
         await interaction.response.send_modal(RegisterRecruitmentChannelModal(self.bot))
+
+    whitelist_command_group = app_commands.Group(
+        name="whitelist", description="commands for managing this channel's recruitment ignore list", guild_only=True
+    )
+
+    @whitelist_command_group.command(name="add", description="add a region to this channel's ignore list")
+    @commands.has_permissions(administrator=True)
+    async def add(self, interaction: discord.Interaction, region: str):
+        pass
+
+    @whitelist_command_group.command(name="remove", description="remove a region from this channel's ignore list")
+    @commands.has_permissions(administrator=True)
+    async def remove(self, interaction: discord.Interaction, region: str):
+        pass
+
+    @whitelist_command_group.command(name="view", description="view this channel's ignore list")
+    @commands.has_permissions(administrator=True)
+    async def view(self, interaction: discord.Interaction):
+        pass
 
     @app_commands.command(name="whitelist", description="Modify this channel's recruitment whitelist")
     @commands.has_permissions(administrator=True)
