@@ -112,6 +112,7 @@ class Queue:
 
 
 class QueueList:
+    _whitelist: List[str]
     last_update: datetime
     _pool: aiomysql.Pool
     _queues: dict[int, Queue] = field(default_factory=dict)
@@ -120,6 +121,7 @@ class QueueList:
     _running: bool
 
     def __init__(self, pool: aiomysql.Pool):
+        self._whitelist = []
         self._pool = pool
         self._queues = {}
         self.last_update = datetime.now(timezone.utc)
@@ -154,6 +156,20 @@ class QueueList:
     async def __aexit__(self, exc_t, exc_v, exc_tb):
         self._running = False
         self._update_thread.join()
+
+    @property
+    def global_whitelist(self):
+        return self._whitelist
+
+    def add_to_whitelist(self, region: str):
+        if region not in self._whitelist:
+            self._whitelist.append(region)
+
+    def remove_from_whitelist(self, region: str):
+        try:
+            self._whitelist.remove(region)
+        except ValueError:
+            logger.warning("tried to remove nonexistent value: %s from global whitelist", region)
 
     def channel(self, channel_id: int) -> Queue:
         with self._queue_lock:
