@@ -5,7 +5,7 @@ import logging
 
 from components.bot import Bot
 from components.config.config_manager import configInstance
-from components.queue import QueueList
+from components.queue import QueueManager
 
 logger = logging.getLogger("main")
 hndlr = logging.StreamHandler()
@@ -25,7 +25,7 @@ async def main():
             init_command="SET SESSION time_zone='+00:00'",
         )
 
-        async with QueueList(pool) as ql:
+        async with QueueManager(pool) as ql:
             async with Bot(session, ql, pool) as bot:
                 await bot.start(configInstance.data.bot_token)
 

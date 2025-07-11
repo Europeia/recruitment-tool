@@ -11,7 +11,7 @@ from discord.ext import commands
 from components.config.config_manager import configInstance
 from components.errors import LastRecruitmentTooRecent, NotRegistered, TooManyRequests
 from components.logger import standard_logger
-from components.queue import QueueList
+from components.queue import QueueManager
 from components.recruiter import Recruiter
 
 
@@ -58,11 +58,11 @@ class Bot(commands.Bot):
         return self.request_timestamps
 
     @property
-    def queue_list(self) -> QueueList:
+    def queue_manager(self) -> QueueManager:
         """The recruitment queue"""
         return self._queue_list
 
-    def __init__(self, session: aiohttp.ClientSession, ql: QueueList, pool: aiomysql.Pool):
+    def __init__(self, session: aiohttp.ClientSession, ql: QueueManager, pool: aiomysql.Pool):
         intents = discord.Intents.default()
         intents.message_content = True
 
