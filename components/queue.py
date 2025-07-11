@@ -58,24 +58,24 @@ class Nation:
 
 
 class Queue:
-    whitelist: list[str]
+    _whitelist: list[str]
     "list of regions that the region associated with this queue will not recruit from"
-    nations: List[Nation]
+    _nations: List[Nation]
 
     def __init__(self, whitelist: List[str] = []):
-        self.nations = []
-        self.whitelist = whitelist
+        self._nations = []
+        self._whitelist = whitelist
 
     def __repr__(self):
-        return f"<Queue nations={len(self.nations)}>"
+        return f"<Queue nations={len(self._nations)}>"
 
     def update(self, new_nations: List[Nation]):
         for nation in new_nations:
-            if nation.region not in self.whitelist:
-                self.nations.insert(0, nation)
+            if nation.region not in self._whitelist:
+                self._nations.insert(0, nation)
 
     def get_nation_count(self) -> int:
-        return len(self.nations)
+        return len(self._nations)
 
     def get_nations(self, user: discord.User, return_count: int = 8) -> List[str]:
         self.prune()
@@ -83,35 +83,39 @@ class Queue:
         if self.get_nation_count() == 0:
             raise EmptyQueue(user)
 
-        resp = [nation.name for nation in self.nations][:return_count]
+        resp = [nation.name for nation in self._nations][:return_count]
 
-        self.nations = self.nations[return_count:]
+        self._nations = self._nations[return_count:]
 
         return resp
 
     def get_nation_names(self) -> List[str]:
-        return [nation.name for nation in self.nations]
+        return [nation.name for nation in self._nations]
 
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
-        self.nations = [nation for nation in self.nations if (current_time - nation.founding_time).total_seconds() < 3600]
+        self._nations = [nation for nation in self._nations if (current_time - nation.founding_time).total_seconds() < 3600]
 
     def purge(self):
-        self.nations = []
+        self._nations = []
 
     def add_to_whitelist(self, region: str):
-        self.whitelist.append(region)
+        self._whitelist.append(region)
 
     def remove_from_whitelist(self, region: str):
-        self.whitelist.remove(region)
+        self._whitelist.remove(region)
 
     def insert(self, nation: Nation):
-        if nation.region not in self.whitelist:
-            self.nations.insert(0, nation)
+        if nation.region not in self._whitelist:
+            self._nations.insert(0, nation)
+
+    @property
+    def whitelist(self):
+        return self._whitelist
 
 
-class QueueList:
+class QueueManager:
     _whitelist: List[str]
     last_update: datetime
     _pool: aiomysql.Pool
@@ -161,15 +165,55 @@ class QueueList:
     def global_whitelist(self):
         return self._whitelist
 
-    def add_to_whitelist(self, region: str):
+    def add_to_global_whitelist(self, region: str):
         if region not in self._whitelist:
             self._whitelist.append(region)
 
-    def remove_from_whitelist(self, region: str):
+    def remove_from_global_whitelist(self, region: str):
         try:
             self._whitelist.remove(region)
         except ValueError:
             logger.warning("tried to remove nonexistent value: %s from global whitelist", region)
+
+    async def add_to_channel_whitelist(self, channel_id: int, region: str):
+        region = region.strip().lower().replace(" ", "_")
+
+        if region in self._whitelist:
+            return
+
+        if region in self._queues[channel_id].whitelist:
+            return
+
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """INSERT INTO exceptions (channelId, region) VALUES (
+                        (SELECT id FROM recruitment_channels WHERE channelId = %s), %s
+                    );""",
+                    (channel_id, region),
+                )
+
+        self._queues[channel_id].whitelist.append(region)
+
+    async def remove_from_channel_whitelist(self, channel_id: int, region: str):
+        region = region.strip().lower().replace(" ", "_")
+
+        if region not in self._queues[channel_id].whitelist:
+            return
+
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """DELETE FROM exceptions WHERE region = %s AND channelId = (
+                        SELECT id FROM recruitment_channels WHERE channelId = %s
+                    );""",
+                    (region, channel_id),
+                )
+
+        self._queues[channel_id].whitelist.remove(region)
+
+    def list_whitelist(self, channel_id: int):
+        return (self._whitelist, self._queues[channel_id].whitelist)
 
     def channel(self, channel_id: int) -> Queue:
         with self._queue_lock:

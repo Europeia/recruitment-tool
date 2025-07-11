@@ -44,7 +44,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
                         (interaction.channel.id, region),
                     )
 
-                    self.bot.queue_list.add_channel(interaction.channel.id, [region])
+                    self.bot.queue_manager.add_channel(interaction.channel.id, [region])
 
                 except Exception as e:
                     await message.delete()
@@ -217,70 +217,32 @@ class RecruitmentCog(commands.Cog):
     @whitelist_command_group.command(name="add", description="add a region to this channel's ignore list")
     @commands.has_permissions(administrator=True)
     async def add(self, interaction: discord.Interaction, region: str):
-        pass
+        if not interaction.channel_id:
+            raise app_commands.AppCommandError("command must be run in a channel")
+
+        await self.bot.queue_manager.add_to_channel_whitelist(interaction.channel_id, region)
+
+        await interaction.response.send_message(f"region: {region} added to whitelist", ephemeral=True)
 
     @whitelist_command_group.command(name="remove", description="remove a region from this channel's ignore list")
     @commands.has_permissions(administrator=True)
     async def remove(self, interaction: discord.Interaction, region: str):
-        pass
+        if not interaction.channel_id:
+            raise app_commands.AppCommandError("command must be run in a channel")
+
+        await self.bot.queue_manager.remove_from_channel_whitelist(interaction.channel_id, region)
+
+        await interaction.response.send_message(f"region: {region} removed from whitelist", ephemeral=True)
 
     @whitelist_command_group.command(name="view", description="view this channel's ignore list")
     @commands.has_permissions(administrator=True)
     async def view(self, interaction: discord.Interaction):
-        pass
+        if not interaction.channel_id:
+            raise app_commands.AppCommandError("command must be run in a channel")
 
-    @app_commands.command(name="whitelist", description="Modify this channel's recruitment whitelist")
-    @commands.has_permissions(administrator=True)
-    @app_commands.choices(
-        action=[
-            app_commands.Choice(name="add", value="add"),
-            app_commands.Choice(name="remove", value="remove"),
-            app_commands.Choice(name="list", value="list"),
-        ]
-    )
-    async def whitelist(self, interaction: discord.Interaction, action: str, region: str = None):
-        if action == "add":
-            if not region:
-                raise ValueError("Region cannot be empty")
-            else:
-                region = region.strip().lower().replace(" ", "_")
+        global_whitelist, local_whitelist = map("\n".join, self.bot.queue_manager.list_whitelist(interaction.channel_id))
 
-            async with self.bot.pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """INSERT INTO exceptions (channelId, region) VALUES (
-                            (SELECT id FROM recruitment_channels WHERE channelId = %s), %s
-                        );""",
-                        (interaction.channel.id, region),
-                    )
-
-                    self.bot.queue_list.channel(interaction.channel.id).add_to_whitelist(region)
-
-                    await interaction.response.send_message(f"Added region {region} to whitelist", ephemeral=True)
-
-        elif action == "remove":
-            if not region:
-                raise ValueError("Region cannot be empty")
-            else:
-                region = region.strip().lower().replace(" ", "_")
-
-            async with self.bot.pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """DELETE FROM exceptions WHERE region = %s AND channelId = (
-                            SELECT id FROM recruitment_channels WHERE channelId = %s
-                        );""",
-                        (region, interaction.channel.id),
-                    )
-
-                    self.bot.queue_list.channel(interaction.channel.id).remove_from_whitelist(region)
-
-                    await interaction.response.send_message(f"Removed region {region} from whitelist", ephemeral=True)
-
-        elif action == "list":
-            regions = "\n".join(self.bot.queue_list.channel(interaction.channel.id).whitelist)
-
-            await interaction.response.send_message(f"Whitelisted regions: \n{regions}", ephemeral=True)
+        await interaction.response.send_message(f"**Global**{global_whitelist}**Local**{local_whitelist}", ephemeral=True)
 
 
 async def setup(bot: Bot):
