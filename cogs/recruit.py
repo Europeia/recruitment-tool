@@ -1,16 +1,14 @@
-import asyncio
 import discord
 import logging
 
 from datetime import datetime, timezone
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord.ui import Modal, View
 
 
 from components.bot import Bot
 from components.errors import WhitelistError, NationNotFound
-from components.queue import Nation
 
 logger = logging.getLogger("main")
 
