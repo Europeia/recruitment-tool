@@ -125,7 +125,6 @@ class Queue:
 
 class QueueManager:
     _whitelist: List[str]
-    last_update: datetime
     _pool: aiomysql.Pool
     _queues: dict[int, Queue] = field(default_factory=dict)
     _queue_lock: threading.Lock
@@ -136,7 +135,6 @@ class QueueManager:
         self._whitelist = []
         self._pool = pool
         self._queues = {}
-        self.last_update = datetime.now(timezone.utc)
         self._queue_lock = threading.Lock()
         self._running = True
 
