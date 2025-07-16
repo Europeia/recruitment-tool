@@ -1,32 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: GPL-3.0-or-later
-#
-# main.py
-#
-# Copyright (C) 2025 <Your Name>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""
-Main entry point for the asynchronous bot application.
+"""Main entry point for the asynchronous bot application.
 
-This module initializes an HTTP client session and a MySQL connection
-pool, then starts the bot with the configured token.
+This module initializes an aiohttp ClientSession for HTTP requests and an
+aiomysql connection pool configured for UTC timezone. It then instantiates
+the Bot and starts it with the configured token.
+
+Exported Functions:
+    main(): Coroutine that sets up HTTP and DB connections and starts the bot.
+
+Typical usage example:
+
+    python main.py
 """
 
 import asyncio
-
 import aiohttp
 import aiomysql
 
