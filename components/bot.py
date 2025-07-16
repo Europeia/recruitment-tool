@@ -124,8 +124,8 @@ class Bot(commands.Bot):
                     raise TooManyRequests(self._policy - elapsed)
 
             # Check if we are exceeding the NS defined maximum number of requests in a bucket
-            if self._remaining <= 1:
-                raise TooManyRequests(self.reset_in)
+            if self._remaining and self._remaining <= 1:
+                raise TooManyRequests(self.reset_in if self.reset_in else 30)
 
         async with self._session.get(url, headers=self._headers) as resp:
             self._ratelimit = int(resp.headers["RateLimit-limit"])
