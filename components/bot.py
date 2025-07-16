@@ -1,18 +1,21 @@
-from datetime import datetime, timedelta, timezone
-from logging import Logger
-from typing import List, Optional
-
 import aiohttp
 import aiomysql
 import discord
+import logging
+
 from bs4 import BeautifulSoup as bs
+from datetime import datetime, timedelta, timezone
 from discord.ext import commands
+from logging import Logger
+from typing import List, Optional
 
 from components.config.config_manager import configInstance
 from components.errors import LastRecruitmentTooRecent, NotRegistered, TooManyRequests
 from components.logger import standard_logger
 from components.queue import QueueManager
 from components.recruiter import Recruiter
+
+logger = logging.getLogger("main")
 
 
 class Bot(commands.Bot):
@@ -27,10 +30,6 @@ class Bot(commands.Bot):
     @property
     def pool(self) -> aiomysql.Pool:
         return self._pool
-
-    @property
-    def std(self) -> Logger:
-        return self._std
 
     @property
     def ratelimit(self) -> Optional[int]:
@@ -71,7 +70,6 @@ class Bot(commands.Bot):
         self._headers = {"User-Agent": f"Aperta Recruitment Bot, developed by nation=upc, run by {configInstance.data.operator}"}
         self._session = session
         self._pool = pool
-        self._std = standard_logger()
         self._ratelimit = None
         self._policy = None
         self._remaining = None
@@ -87,7 +85,7 @@ class Bot(commands.Bot):
                 await cur.execute("SELECT channelId, messageId FROM recruitment_channels;")
                 recruitment_views = await cur.fetchall()
 
-                for channel_id, message_id in recruitment_views:
+                for _, message_id in recruitment_views:
                     self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
 
         default_cogs = ["base", "recruit", "error_handler"]
@@ -179,7 +177,7 @@ class Bot(commands.Bot):
                         dbid, nation, template, user.id, channel_id, allow_recruitment_at, founded_time.replace(tzinfo=timezone.utc)
                     )
 
-    async def set_next_recruitment_at(self, recruiter: Recruiter, nation_count: int) -> int:
+    async def set_next_recruitment_at(self, recruiter: Recruiter, nation_count: int) -> int | float:
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 cooldown = recruiter.get_cooldown(nation_count)
@@ -193,6 +191,7 @@ class Bot(commands.Bot):
                     """,
                     (next_recruitment_timestamp, recruiter.id),
                 )
+
                 return cooldown
 
     async def update_telegram_count(self, recruiter: Recruiter, nation_count: int):
@@ -262,10 +261,10 @@ class Bot(commands.Bot):
 
         return embed, view, cooldown
 
-    async def update_status_embeds(self, channel_id: int = None):
+    async def update_status_embeds(self, channel_id: Optional[int] = None):
         """Update status embeds. If channel_id is provided, only update the embed for that channel"""
 
-        self._std.info("Updating status embeds")
+        logger.info("Updating status embeds")
 
         if channel_id:
             embed = discord.Embed(title="Recruitment Queue")
@@ -276,9 +275,12 @@ class Bot(commands.Bot):
                 async with conn.cursor() as cur:
                     await cur.execute("SELECT messageId FROM recruitment_channels WHERE channelId = %s;", channel_id)
 
-                    message_id = (await cur.fetchone())[0]
+                    message_id: int = (await cur.fetchone())[0]
 
-                    channel: discord.TextChannel = self.get_channel(channel_id)
+                    channel = self.get_channel(channel_id)
+
+                    assert isinstance(channel, discord.TextChannel) or isinstance(channel, discord.Thread)
+
                     message = await channel.fetch_message(message_id)
 
                     await message.edit(embed=embed)
@@ -290,18 +292,20 @@ class Bot(commands.Bot):
                     recruitment_views = await cur.fetchall()
 
                     for channel_id, message_id in recruitment_views:
+                        assert type(channel_id) is int and type(message_id) is int
+
                         embed = discord.Embed(title="Recruitment Queue")
                         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
-                        embed.add_field(
-                            name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>"
-                        )
+                        embed.add_field(name="Last Updated", value=f"<t:{int(datetime.now().timestamp())}:R>")
 
                         try:
-                            channel: discord.TextChannel = self.get_channel(channel_id)
+                            channel = self.get_channel(channel_id)
+
+                            assert isinstance(channel, discord.TextChannel) or isinstance(channel, discord.Thread)
 
                             message = await channel.fetch_message(message_id)
 
                             await message.edit(embed=embed)
                         except Exception as e:
-                            self._std.error("Error updating channel id: " + str(channel_id))
-                            self._std.error(f"Error in update_loop: {e}")
+                            logger.error("Error updating channel_id: %d", channel_id)
+                            logger.error(f"Error in update_loop: {e}")

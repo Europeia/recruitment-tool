@@ -151,7 +151,7 @@ class ReportModal(Modal, title="Recruitment Report"):
         )
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
-        self.bot.std.error(error)
+        logger.error(error)
         await interation.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
 
@@ -175,14 +175,14 @@ class RecruitView(View):
         await interaction.response.send_modal(ReportModal(self.bot))
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
-        self.bot.std.error(error)
+        logger.error(error)
         await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
 
 class TelegramView(View):
     message: discord.Message
 
-    def __init__(self, cooldown: int):
+    def __init__(self, cooldown: int | float):
         super().__init__(timeout=3 + cooldown)
 
     async def on_timeout(self):
@@ -199,6 +199,8 @@ class RecruitmentCog(commands.Cog):
     @app_commands.guild_only()
     @commands.has_permissions(administrator=True)
     async def register_recruitment_channel(self, interaction: discord.Interaction):
+        assert interaction.guild is not None
+
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT id FROM whitelist WHERE serverId = %s;", (interaction.guild.id,))
