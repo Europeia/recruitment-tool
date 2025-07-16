@@ -1,140 +1,100 @@
-# NationStates Recruitment Tool
+# Recruitment Tool
 
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)  
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
-## Table of Contents
-
-- [Description](#description)  
-- [Features](#features)  
-- [Requirements](#requirements)  
-- [Installation](#installation)  
-- [Configuration](#configuration)  
-- [Usage](#usage)  
-- [Development & Testing](#development--testing)  
-- [Contributing](#contributing)  
-- [License](#license)  
-
----
-
-## Description
-
-A Discord bot that automates NationStates recruitment workflows:
-
-- Queues new nations in real-time  
-- Enforces API rate limits  
-- Provides slash commands & interactive UIs  
-- Tracks recruitment statistics per channel  
-
----
-
-## Features
-
-- **Background polling** of new nations  
-- **Region whitelist** to exclude undesired nations  
-- **Interactive modals** for registration & reporting  
-- **Recruitment stats** and reports  
-- **Robust error handling** and logging  
+A Discord bot that automates NationStates recruitment: queues new nations, enforces rate limits, and a Discord user interface.
 
 ---
 
 ## Requirements
 
-- **OS:** A Debian-based distro
-- **Python:** ≥ 3.11  
+- **Python:** 3.11 or later  
 - **MySQL:** 8.0+ server (or compatible)  
-- **Network:** Outbound HTTP access for the NationStates API  
+- **Network:** Outbound HTTP to `nationstates.net`
 
 ---
 
 ## Installation
 
-1. **Clone the repo**  
-   ```bash
-   git clone https://github.com/Europeia/recruitment-tool.git
-   cd recruitment-tool
+### 1. Clone the repo
+```bash
+git clone https://github.com/Europeia/recruitment-tool.git
+cd recruitment-tool
+````
+
+### 2. Create & activate a virtual environment
+
+* **Debian/Ubuntu, Fedora, or other Linux:**
+
+  ```bash
+  python3.11 -m venv venv
+  source venv/bin/activate
+  ```
+* **macOS (with Homebrew):**
+
+  ```bash
+  brew install python@3.11
+  python3.11 -m venv venv
+  source venv/bin/activate
+  ```
+* **Windows (PowerShell):**
+
+  ```powershell
+  py -3.11 -m venv venv
+  .\venv\Scripts\Activate.ps1
+  ```
+
+### 3. Install dependencies
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
-
-2. **Create & activate a virtual environment**
-
-   ```bash
-   python3.11 -m venv venv
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**
-
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
-
-4. **Prepare logs directory**
-
-   ```bash
-   mkdir -p logs
-   ```
 
 ---
 
 ## Configuration
 
-1. **Copy the example**
+1. Copy the example:
 
    ```bash
    cp settings.json.default settings.json
    ```
+   
+2. **Edit `settings.json`**  
+   Replace placeholder values and adjust as needed:
 
-2. **Edit `settings.json`**
-   Fill in your MySQL credentials, Discord IDs, bot token, etc.
+   - **MySQL**  
+      `dbHost`, `dbPort`, `dbUser`, `dbPassword`, `dbName`  
+   - **NationStates API**  
+      `operator`  
+   - **Discord IDs**  
+      `guildId`, `recruitChannelId`, `reportChannelId`, `recruitRoleId`, `statusMessageId`  
+   - **Bot token**  
+      `botToken`  
+   - **Polling & rate limits**  
+      `pollingRate`, `periodMax`  
+   - **Region exceptions**  
+      `recruitmentExceptions` (array of region keys)  
 
 ---
 
 ## Usage
 
-Run the bot:
+Run the bot in your active virtual environment:
 
 ```bash
-python main.py
+python3 main.py
 ```
 
-> **Tip:** Use a process manager (systemd, pm2, etc.) to keep it running in production.
+* **User Interface:**
 
----
-
-## Development & Testing
-
-* **Linting:**
-
-  ```bash
-  flake8 .
-  ```
-
-* **Type-checking:**
-
-  ```bash
-  mypy .
-  ```
-
-* **Unit tests:**
-
-  ```bash
-  pytest
-  ```
-
----
-
-## Contributing
-
-WIP
+  * `/register` to register a channel
+  * Buttons to recruit, register, or view reports
 
 ---
 
 ## License
 
-This project is licensed under the GNU GPL v3.0 (or later).
-See [LICENSE](./LICENSE) for the full text.
-
-```
-::contentReference[oaicite:0]{index=0}
-```
+GPL-3.0-or-later. See [LICENSE.md](./LICENSE.md).
