@@ -27,7 +27,7 @@ class Event:
     id: str
     htmlstr: str
     str: str
-    time: int
+    timestamp: int
 
     @classmethod
     def from_json(cls, dct) -> Self:
@@ -41,6 +41,7 @@ class Event:
 class FoundingEvent:
     nation: str
     region: str
+    timestamp: datetime
 
 
 @dataclass
@@ -48,6 +49,7 @@ class MoveEvent:
     nation: str
     moved_from: str
     moved_to: str
+    timestamp: datetime
 
 
 @dataclass
@@ -69,10 +71,9 @@ class Queue:
     def __repr__(self):
         return f"<Queue nations={len(self._nations)}>"
 
-    def update(self, new_nations: List[Nation]):
-        for nation in new_nations:
-            if nation.region not in self._whitelist:
-                self._nations.insert(0, nation)
+    def update(self, nation: Nation):
+        if nation.region not in self._whitelist:
+            self._nations.insert(0, nation)
 
     def get_nation_count(self) -> int:
         return len(self._nations)
@@ -106,7 +107,14 @@ class Queue:
     def remove_from_whitelist(self, region: str):
         self._whitelist.remove(region)
 
-    def insert(self, nation: Nation):
+    def handle_move(self, nation_name: str, destination: str):
+        for idx, nation in enumerate(self._nations):
+            if nation.name == nation_name:
+                if destination in self._whitelist:
+                    del self._nations[idx]
+                return
+
+    def handle_founding(self, nation: Nation):
         if nation.region not in self._whitelist:
             self._nations.insert(0, nation)
 
@@ -159,7 +167,6 @@ class QueueManager:
 
     async def __aexit__(self, exc_t, exc_v, exc_tb):
         self._running = False
-        self._update_thread.join()
 
     @property
     def global_whitelist(self):
@@ -232,21 +239,41 @@ class QueueManager:
             return self._queues[channel_id].get_nation_count()
 
     def _handle_founding(self, event: FoundingEvent):
-        pass
+        if PUPPET_REGEX.match(event.nation):
+            logger.debug("likely puppet founding found; skipping: %s", event.nation)
+            return
+
+        if event.region in self._whitelist:
+            logger.debug("founding in whitelisted region; skipping %s", event.nation)
+            return
+
+        with self._queue_lock:
+            for _, queue in self._queues.items():
+                queue.handle_founding(Nation(event.nation, event.region, event.timestamp))
 
     def _handle_move(self, event: MoveEvent):
-        pass
+        if PUPPET_REGEX.match(event.nation):
+            logger.debug("likely puppet move found; skipping: %s", event.nation)
+            return
+
+        if event.moved_to in self._whitelist:
+            logger.debug("move to whitelisted region; skipping %s", event.nation)
+            return
+
+        with self._queue_lock:
+            for _, queue in self._queues.items():
+                queue.handle_move(event.nation, event.moved_to)
 
     def _handle_events(self):
-        for event in sseclient.SSEClient(requests.get("https://www.nationstates.net/api/founding+move", stream=True)).events():
+        for event in sseclient.SSEClient(requests.get("https://www.nationstates.net/api/founding+move", stream=True)).events():  # type: ignore
             data: Event = json.loads(event.data, object_hook=Event.from_json)
 
-            logger.debug(data)
+            logger.debug("event: %s", data.str)
 
             if match := FOUNDING_REGEX.match(data.str):
-                self._handle_founding(FoundingEvent(match[1], match[2]))
+                self._handle_founding(FoundingEvent(match[1], match[2], datetime.fromtimestamp(data.timestamp)))
             elif match := MOVE_REGEX.match(data.str):
-                self._handle_move(MoveEvent(match[1], match[2], match[3]))
+                self._handle_move(MoveEvent(match[1], match[2], match[3], datetime.fromtimestamp(data.timestamp)))
 
             if not self._running:
                 raise asyncio.CancelledError()
