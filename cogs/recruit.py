@@ -3,7 +3,7 @@ import logging
 
 from datetime import datetime, timezone
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import Modal, View
 
 
@@ -194,6 +194,11 @@ class TelegramView(View):
 class RecruitmentCog(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
+        self.refresh_embeds.start()
+
+    @tasks.loop(seconds=15)
+    async def refresh_embeds(self):
+        await self.bot.update_status_embeds()
 
     @app_commands.command(name="register", description="Register a channel for recruitment")
     @app_commands.guild_only()
