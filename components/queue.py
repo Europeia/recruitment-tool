@@ -8,6 +8,7 @@ import requests
 import sseclient
 import threading
 
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import List, Self
@@ -63,6 +64,7 @@ class Queue:
     _whitelist: list[str]
     "list of regions that the region associated with this queue will not recruit from"
     _nations: List[Nation]
+    _last_updated: datetime
 
     def __init__(self, whitelist: List[str] = []):
         self._nations = []
@@ -108,22 +110,27 @@ class Queue:
         self._whitelist.remove(region)
 
     def handle_move(self, nation_name: str, destination: str):
-        for idx, nation in enumerate(self._nations):
-            if nation.name == nation_name:
-                if destination in self._whitelist:
-                    del self._nations[idx]
-                return
+        if destination in self._whitelist:
+            self._nations = [nation for nation in self._nations if nation.name != nation_name]
+
+            self._last_updated = datetime.now(timezone.utc)
 
     def handle_founding(self, nation: Nation):
         if nation.region not in self._whitelist:
             self._nations.insert(0, nation)
 
+            self._last_updated = datetime.now(timezone.utc)
+
     @property
     def whitelist(self):
         return self._whitelist
 
+    @property
+    def last_updated(self):
+        return self._last_updated
 
-class QueueManager:
+
+class QueueManager(AbstractAsyncContextManager):
     _whitelist: List[str]
     _pool: aiomysql.Pool
     _queues: dict[int, Queue] = field(default_factory=dict)
@@ -247,7 +254,7 @@ class QueueManager:
 
         with self._queue_lock:
             for _, queue in self._queues.items():
-                queue.handle_founding(Nation(event.nation, event.region, event.timestamp))
+                queue.handle_founding(Nation(event.nation, event.region, event.timestamp.astimezone(timezone.utc)))
 
     def _handle_move(self, event: MoveEvent):
         if PUPPET_REGEX.match(event.nation):
