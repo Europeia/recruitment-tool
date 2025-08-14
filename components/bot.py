@@ -6,12 +6,10 @@ import logging
 from bs4 import BeautifulSoup as bs
 from datetime import datetime, timedelta, timezone
 from discord.ext import commands
-from logging import Logger
 from typing import List, Optional
 
 from components.config.config_manager import configInstance
 from components.errors import LastRecruitmentTooRecent, NotRegistered, TooManyRequests
-from components.logger import standard_logger
 from components.queue import QueueManager
 from components.recruiter import Recruiter
 
@@ -174,7 +172,13 @@ class Bot(commands.Bot):
                     (dbid, nation, template, allow_recruitment_at, founded_time) = await cur.fetchone()
 
                     return Recruiter(
-                        dbid, nation, template, user.id, channel_id, allow_recruitment_at, founded_time.replace(tzinfo=timezone.utc)
+                        dbid,
+                        nation,
+                        template,
+                        user.id,
+                        channel_id,
+                        allow_recruitment_at.replace(tzinfo=timezone.utc),
+                        founded_time.replace(tzinfo=timezone.utc),
                     )
 
     async def set_next_recruitment_at(self, recruiter: Recruiter, nation_count: int) -> int | float:
@@ -233,7 +237,7 @@ class Bot(commands.Bot):
 
         recruiter = await self.get_recruiter(user, channel_id)
 
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
 
         if recruiter.next_recruitment_at > current_time:
             reset_in = (recruiter.next_recruitment_at - current_time).total_seconds()
@@ -255,14 +259,14 @@ class Bot(commands.Bot):
             discord.ui.Button(
                 label="Open Telegram",
                 style=discord.ButtonStyle.link,
-                url=f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25&generated_by=Asperta+Recruitment+Bot",
+                url=f"https://fast.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25&generated_by=Asperta+Recruitment+Bot",
             )
         )
 
         return embed, view, cooldown
 
     async def update_status_embeds(self, channel_id: Optional[int] = None):
-        """Update status embeds. If channel_id is provided, only update the embed for that channel"""
+        """Update status embeds. If `channel_id` is provided, only update the embed for that channel"""
 
         logger.info("Updating status embeds")
 
@@ -275,7 +279,9 @@ class Bot(commands.Bot):
                 async with conn.cursor() as cur:
                     await cur.execute("SELECT messageId FROM recruitment_channels WHERE channelId = %s;", channel_id)
 
-                    message_id: int = (await cur.fetchone())[0]
+                    message_id = (await cur.fetchone())[0]
+
+                    assert isinstance(message_id, int)
 
                     channel = self.get_channel(channel_id)
 
