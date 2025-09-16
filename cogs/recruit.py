@@ -8,9 +8,14 @@ from discord.ui import Modal, View
 
 
 from components.bot import Bot
+from components.config.config_manager import configInstance
 from components.errors import WhitelistError, NationNotFound
 
 logger = logging.getLogger("main")
+
+
+def is_global_admin(interaction: discord.Interaction) -> bool:
+    return interaction.user.id in configInstance.data.global_administrators
 
 
 class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel"):
@@ -51,7 +56,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
                     await interaction.response.send_message(f"Registered channel for region: {region}", ephemeral=True)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        print(error)
+        logger.exception(error)
         await interaction.response.send_message(f"An error occurred:\n\n{error}", ephemeral=True)
 
 
@@ -202,7 +207,7 @@ class RecruitmentCog(commands.Cog):
 
     @app_commands.command(name="register", description="Register a channel for recruitment")
     @app_commands.guild_only()
-    @commands.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def register_recruitment_channel(self, interaction: discord.Interaction):
         assert interaction.guild is not None
 
@@ -220,17 +225,17 @@ class RecruitmentCog(commands.Cog):
     )
 
     @whitelist_command_group.command(name="add", description="add a region to this channel's ignore list")
-    @commands.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def add(self, interaction: discord.Interaction, region: str):
         if not interaction.channel_id:
             raise app_commands.AppCommandError("command must be run in a channel")
 
         await self.bot.queue_manager.add_to_channel_whitelist(interaction.channel_id, region)
 
-        await interaction.response.send_message(f"region: {region} added to whitelist", ephemeral=True)
+        await interaction.response.send_message(f"region: {region: } added to whitelist", ephemeral=True)
 
     @whitelist_command_group.command(name="remove", description="remove a region from this channel's ignore list")
-    @commands.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def remove(self, interaction: discord.Interaction, region: str):
         if not interaction.channel_id:
             raise app_commands.AppCommandError("command must be run in a channel")
@@ -240,7 +245,7 @@ class RecruitmentCog(commands.Cog):
         await interaction.response.send_message(f"region: {region} removed from whitelist", ephemeral=True)
 
     @whitelist_command_group.command(name="view", description="view this channel's ignore list")
-    @commands.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def view(self, interaction: discord.Interaction):
         if not interaction.channel_id:
             raise app_commands.AppCommandError("command must be run in a channel")
@@ -248,6 +253,22 @@ class RecruitmentCog(commands.Cog):
         global_whitelist, local_whitelist = map("\n".join, self.bot.queue_manager.list_whitelist(interaction.channel_id))
 
         await interaction.response.send_message(f"**Global**{global_whitelist}**Local**{local_whitelist}", ephemeral=True)
+
+    admin_command_group = app_commands.Group(name="admin", description="global bot administrator commands")
+
+    @admin_command_group.command(name="ignore", description="add a region to the global ignore list")
+    @app_commands.check(is_global_admin)
+    async def ignore(self, interaction: discord.Interaction, region: str):
+        await self.bot.queue_manager.add_to_global_whitelist(region)
+
+        await interaction.response.send_message("all set!", ephemeral=True)
+
+    @admin_command_group.command(name="unignore", description="remove a region from the global ignore list")
+    @app_commands.check(is_global_admin)
+    async def unignore(self, interaction: discord.Interaction, region: str):
+        await self.bot.queue_manager.remove_from_global_whitelist(region)
+
+        await interaction.response.send_message("all set!", ephemeral=True)
 
 
 async def setup(bot: Bot):

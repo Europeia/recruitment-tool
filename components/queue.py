@@ -132,6 +132,7 @@ class Queue:
 
 class QueueManager(AbstractAsyncContextManager):
     _whitelist: List[str]
+    """list of regions from which spawns will be ignored globally. moves to these regions are also purged from all queues"""
     _pool: aiomysql.Pool
     _queues: dict[int, Queue] = field(default_factory=dict)
     _queue_lock: threading.Lock
@@ -164,6 +165,11 @@ class QueueManager(AbstractAsyncContextManager):
 
                     self.add_channel(channel, regions)
 
+                await cur.execute("SELECT region FROM global_exceptions;")
+                regions: List[str] = [line[0] for line in await cur.fetchall()]
+
+                self._whitelist = regions
+
         self._update_thread = threading.Thread(target=self._update, daemon=True)
 
         self._update_thread.start()
@@ -177,15 +183,25 @@ class QueueManager(AbstractAsyncContextManager):
     def global_whitelist(self):
         return self._whitelist
 
-    def add_to_global_whitelist(self, region: str):
+    async def add_to_global_whitelist(self, region: str):
+        region = region.lower().replace(" ", "_")
+
         if region not in self._whitelist:
+            async with self._pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute("INSERT INTO global_exceptions (region) VALUES (%s);", (region,))
+
             self._whitelist.append(region)
 
-    def remove_from_global_whitelist(self, region: str):
-        try:
+    async def remove_from_global_whitelist(self, region: str):
+        region = region.lower().replace(" ", "_")
+
+        if region in self._whitelist:
+            async with self._pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute("DELETE FROM global_exceptions WHERE region = %s;", (region,))
+
             self._whitelist.remove(region)
-        except ValueError:
-            logger.warning("tried to remove nonexistent value: %s from global whitelist", region)
 
     async def add_to_channel_whitelist(self, channel_id: int, region: str):
         region = region.strip().lower().replace(" ", "_")
