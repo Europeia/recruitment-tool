@@ -20,7 +20,7 @@ dependencies = [
     "cron-converter==1.0.2",
     "cryptography==44.0.0",
     "dataclasses-json==0.5.7",
-    "discord-py==2.3.2",
+    "discord-py>=2.3.2",
     "frozenlist==1.4.1",
     "idna==3.4",
     "lxml==4.9.3",
