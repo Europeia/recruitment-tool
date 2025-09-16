@@ -71,7 +71,7 @@ class ConfigManager:
             "db_password": self._data.db_password,
             "db_name": self._data.db_name,
             "operator": self._data.operator,
-            "pollig_rate": self._data.polling_rate,
+            "polling_rate": self._data.polling_rate,
             "period_max": self._data.period_max,
             "bot_token": self._data.bot_token,
             "global_administrators": self._data.global_administrators,
