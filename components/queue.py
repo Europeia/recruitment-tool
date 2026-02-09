@@ -1,17 +1,19 @@
 import aiomysql
 import asyncio
 import discord
+import httpx
 import json
 import logging
 import re
-import requests
-import sseclient
 import threading
+import time
 
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from httpx_sse import connect_sse, ServerSentEvent
 from typing import List, Self
+from stamina import retry
 
 from components.errors import EmptyQueue
 
@@ -21,6 +23,8 @@ logger = logging.getLogger("main")
 PUPPET_REGEX = re.compile(r"^\d+_[a-z0-9_]+|[a-z0-9_]+_\d+$|^[a-z0-9_]+_m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
 FOUNDING_REGEX = re.compile("^@@([a-z0-9_]+)@@ was founded in %%([a-z0-9_]+)%%.?$")
 MOVE_REGEX = re.compile("^@@([a-z0-9_]+)@@ relocated from %%([a-z0-9_]+)%% to %%([a-z0-9_]+)%%.?$")
+
+HEADERS = {}
 
 
 @dataclass
@@ -32,7 +36,7 @@ class Event:
 
     @classmethod
     def from_json(cls, dct) -> Self:
-        return cls(dct["id"], dct["htmlStr"], dct["str"], dct["time"])
+        return cls(dct["id"], dct["htmlStr"], dct["str"], int(dct["time"]))
 
     def __repr__(self):
         return f"<Event id={self.id} data={self.str}>"
@@ -285,28 +289,45 @@ class QueueManager(AbstractAsyncContextManager):
             for _, queue in self._queues.items():
                 queue.handle_move(event.nation, event.moved_to)
 
-    def _handle_events(self):
-        for event in sseclient.SSEClient(requests.get("https://www.nationstates.net/api/founding+move", stream=True)).events():  # type: ignore
-            data: Event = json.loads(event.data, object_hook=Event.from_json)
+    def _handle_event(self, ev: ServerSentEvent):
+        event: Event = json.loads(ev.data, object_hook=Event.from_json)
 
-            logger.debug("event: %s", data.str)
+        if match := FOUNDING_REGEX.match(event.str):
+            self._handle_founding(FoundingEvent(match[1], match[2], datetime.fromtimestamp(event.timestamp)))
+        elif match := MOVE_REGEX.match(event.str):
+            self._handle_move(MoveEvent(match[1], match[2], match[3], datetime.fromtimestamp(event.timestamp)))
 
-            if match := FOUNDING_REGEX.match(data.str):
-                self._handle_founding(FoundingEvent(match[1], match[2], datetime.fromtimestamp(data.timestamp)))
-            elif match := MOVE_REGEX.match(data.str):
-                self._handle_move(MoveEvent(match[1], match[2], match[3], datetime.fromtimestamp(data.timestamp)))
-
-            if not self._running:
-                raise asyncio.CancelledError()
+        if not self._running:
+            raise asyncio.CancelledError()
 
     def _update(self):
         logger.info("starting update thread")
 
-        while self._running:
-            try:
-                self._handle_events()
-            except asyncio.CancelledError:
-                logger.info("terminating update thread")
-                return
-            except Exception:
-                logger.exception("error in update loop")
+        with httpx.Client(headers=HEADERS, timeout=None) as client:
+            for event in sse_retrying(client, "GET", "https://www.nationstates.net/api/founding+move"):
+                self._handle_event(event)
+
+
+def sse_retrying(client, method, url):
+    last_event_id = ""
+    reconnection_delay = 0.0
+
+    @retry(on=httpx.ReadError)
+    def _iter_sse():
+        nonlocal last_event_id, reconnection_delay
+
+        time.sleep(reconnection_delay)
+
+        if last_event_id:
+            HEADERS["Last-Event-ID"] = last_event_id
+
+        with connect_sse(client, method, url, headers=HEADERS) as event_source:
+            for sse in event_source.iter_sse():
+                last_event_id = sse.id
+
+                if sse.retry is not None:
+                    reconnection_delay = sse.retry / 1000
+
+                yield sse
+
+    return _iter_sse()
