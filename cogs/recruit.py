@@ -191,15 +191,18 @@ class TelegramView(View):
         super().__init__(timeout=3 + cooldown)
 
     async def on_timeout(self):
-        if self.message:
-            await self.message.edit(view=None)
         self.stop()
 
 
 class RecruitmentCog(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
+
+    async def cog_load(self):
         self.refresh_embeds.start()
+
+    async def cog_unload(self):
+        self.refresh_embeds.stop()
 
     @tasks.loop(seconds=15)
     async def refresh_embeds(self):
