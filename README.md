@@ -1,21 +1,17 @@
-# Requirements
+# Asperta
+Named after a prolific early Europeian recruiter, Asperta is a multitenant Discord based recruitment tool for [NationStates](https://www.nationstates.net/). A guide for both users and administrators is available in [dispatch form](https://www.nationstates.net/page=dispatch/id=2628328). 
 
-- python 3.11
-- Ubuntu
-- sudo apt install python3.11-pip
-- venv
-    - Ubuntu
-    - sudo apt install python3.11-venv
-    - source venv/bin/activate
+# Requirements
+- [uv](https://docs.astral.sh/uv/)
+- [MySQL Community Server](https://dev.mysql.com/downloads/mysql/)
 
 # Installation
-
-- python3.11 -m pip install -r requirements.txt
-- mkdir logs
-- create a file called settings.json
-    - use settings.json.default as a starting point
-    - fill in correct values for settings.json
+- ``git clone https://github.com/Europeia/recruitment-tool.git``
+- ``cd recruitment-tool``
+- ``mkdir logs``
+- ``cp settings.json.default settings.json``
+- ``nano settings.json``
+    - customize using your values
 
 # Execution
-
-- python3.11 main.py
+- ``uv run main.py``

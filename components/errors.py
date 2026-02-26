@@ -49,6 +49,7 @@ class TooManyRequests(commands.CommandError):
 
 class NationNotFound(commands.CommandError):
     """Raised when a nation cannot be retrieved via the NationStates API"""
+
     def __init__(self, user: discord.User, nation: str):
         self.user = user
         self.nation = nation
@@ -58,7 +59,8 @@ class NationNotFound(commands.CommandError):
 
 class WhitelistError(app_commands.AppCommandError):
     """Raised when someone attempts to register a recruitment channel in server that is not whitelisted"""
-    def __init__(self, user: discord.User, guild: discord.Guild):
+
+    def __init__(self, user: discord.User | discord.Member, guild: discord.Guild):
         self.user = user
         self.guild = guild
 

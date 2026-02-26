@@ -1,4 +1,5 @@
 import logging
+import os
 
 from logging import Logger
 
@@ -8,6 +9,9 @@ def standard_logger() -> Logger:
     logger.setLevel(logging.INFO)
 
     standard_formatter = logging.Formatter("%(levelname)s - %(asctime)s: %(message)s")
+
+    if not os.path.isdir("./logs"):
+        os.mkdir("./logs")
 
     standard_file_handler = logging.FileHandler("logs/err.log")
     standard_file_handler.setFormatter(standard_formatter)

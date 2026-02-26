@@ -1,7 +1,7 @@
 import inspect
 import json
 from logging import Logger
-from os import getcwd, path
+from os import path
 
 from .config_model import ConfigData
 
@@ -48,8 +48,8 @@ class ConfigManager:
     def readConfig(self) -> None:
         print("READ")
         try:
-            f = open('settings.json', 'r')
-            open_message = f'Loading settings from: {path.realpath(f.name)}'
+            f = open("settings.json", "r")
+            open_message = f"Loading settings from: {path.realpath(f.name)}"
             if hasattr(self, "_std") and self._std is not None:
                 self._std.info(open_message)
             else:
@@ -62,24 +62,19 @@ class ConfigManager:
         return
 
     def writeConfig(self) -> None:
-        f = open('settings.json', 'w')
+        f = open("settings.json", "w")
 
         data = {
-            "dbHost": self._data._db_host,
-            "dbPort": self._data._db_port,
-            "dbUser": self._data._db_user,
-            "dbPassword": self._data._db_password,
-            "dbName": self._data._db_name,
-            "operator": self._data._operator,
-            "guildId": self._data._guild.id,
-            "recruitChannelId": self._data._recruit_channel_id,
-            "recruitRoleId": self._data._recruit_role_id,
-            "reportChannelId": self._data._report_channel_id,
-            "statusMessageId": self._data._status_message_id,
-            "pollingRate": self._data._polling_rate,
-            "periodMax": self._data._period_max,
-            "botToken": self._data._bot_token,
-            "recruitmentExceptions": self._data._recruitment_exceptions
+            "db_host": self._data.db_host,
+            "db_port": self._data.db_port,
+            "db_user": self._data.db_user,
+            "db_password": self._data.db_password,
+            "db_name": self._data.db_name,
+            "operator": self._data.operator,
+            "polling_rate": self._data.polling_rate,
+            "period_max": self._data.period_max,
+            "bot_token": self._data.bot_token,
+            "global_administrators": self._data.global_administrators,
         }
 
         json.dump(data, f, cls=ObjectEncoder, indent=2, skipkeys=True)
