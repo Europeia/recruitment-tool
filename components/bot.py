@@ -268,7 +268,10 @@ class Bot(commands.Bot):
     async def update_status_embeds(self, channel_id: Optional[int] = None):
         """Update status embeds. If `channel_id` is provided, only update the embed for that channel"""
 
-        logger.info("Updating status embeds")
+        if channel_id:
+            logger.info("updating status embed for channel %d", channel_id)
+        else:
+            logger.info("Updating status embeds")
 
         if channel_id:
             embed = discord.Embed(title="Recruitment Queue")
@@ -312,6 +315,5 @@ class Bot(commands.Bot):
                             message = await channel.fetch_message(message_id)
 
                             await message.edit(embed=embed)
-                        except Exception as e:
-                            logger.error("Error updating channel_id: %d", channel_id)
-                            logger.error(f"Error in update_loop: {e}")
+                        except Exception:
+                            logger.exception("error updating channel_id: %d", channel_id)
