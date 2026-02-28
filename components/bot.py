@@ -259,7 +259,7 @@ class Bot(commands.Bot):
             discord.ui.Button(
                 label="Open Telegram",
                 style=discord.ButtonStyle.link,
-                url=f"https://fast.nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25&generated_by=Asperta+Recruitment+Bot",
+                url=f"https://nationstates.net/page=compose_telegram?tgto={','.join(nations)}&message=%25{recruiter.template}%25&generated_by=Asperta+Recruitment+Bot",
             )
         )
 
@@ -310,7 +310,7 @@ class Bot(commands.Bot):
                         try:
                             channel = self.get_channel(channel_id)
 
-                            # assert isinstance(channel, discord.TextChannel) or isinstance(channel, discord.Thread)
+                            assert isinstance(channel, discord.TextChannel) or isinstance(channel, discord.Thread)
 
                             message = await channel.fetch_message(message_id)
 
