@@ -206,7 +206,10 @@ class RecruitmentCog(commands.Cog):
 
     @tasks.loop(seconds=15)
     async def refresh_embeds(self):
-        await self.bot.update_status_embeds()
+        try:
+            await self.bot.update_status_embeds()
+        except Exception:
+            logger.exception("error in embed refresh task")
 
     @app_commands.command(name="register", description="Register a channel for recruitment")
     @app_commands.guild_only()

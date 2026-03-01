@@ -314,11 +314,15 @@ class Bot(commands.Bot):
                                 logger.warning("channel %d not found; skipping", channel_id)
                                 continue
 
-                            logger.debug("channel type: %s", type(channel))
+                            if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+                                logger.warning("Channel %d not found or wrong type (%s)", channel_id, type(channel))
+                                continue
 
-                            assert isinstance(channel, discord.TextChannel) or isinstance(channel, discord.Thread)
-
-                            message = await channel.fetch_message(message_id)
+                            try:
+                                message = await channel.fetch_message(message_id)
+                            except discord.NotFound:
+                                logger.warning("message: %d not found, skipping", message_id)
+                                continue
 
                             await message.edit(embed=embed)
                         except Exception:
