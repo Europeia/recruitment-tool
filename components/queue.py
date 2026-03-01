@@ -304,8 +304,12 @@ class QueueManager(AbstractAsyncContextManager):
         logger.info("starting update thread")
 
         with httpx.Client(headers=HEADERS, timeout=None) as client:
-            for event in sse_retrying(client, "GET", "https://www.nationstates.net/api/founding+move"):
-                self._handle_event(event)
+            while True:
+                try:
+                    for event in sse_retrying(client, "GET", "https://www.nationstates.net/api/founding+move"):
+                        self._handle_event(event)
+                except Exception:
+                    logger.exception("error in SSE feed")
 
 
 def sse_retrying(client, method, url):
