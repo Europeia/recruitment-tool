@@ -310,6 +310,8 @@ class Bot(commands.Bot):
                         try:
                             channel = self.get_channel(channel_id)
 
+                            logging.info("%s", type(channel))
+
                             assert isinstance(channel, discord.TextChannel) or isinstance(channel, discord.Thread)
 
                             message = await channel.fetch_message(message_id)
