@@ -310,7 +310,11 @@ class Bot(commands.Bot):
                         try:
                             channel = self.get_channel(channel_id)
 
-                            logging.info("%s", type(channel))
+                            if not channel:
+                                logger.warning("channel %d not found; skipping", channel_id)
+                                continue
+
+                            logger.debug("channel type: %s", type(channel))
 
                             assert isinstance(channel, discord.TextChannel) or isinstance(channel, discord.Thread)
 
