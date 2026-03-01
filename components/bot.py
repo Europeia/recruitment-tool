@@ -265,6 +265,29 @@ class Bot(commands.Bot):
 
         return embed, view, cooldown
 
+    async def resolve_channel(self, id: int) -> discord.TextChannel | discord.Thread | None:
+        channel = self.get_channel(id)
+
+        if channel:
+            if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+                logger.warning("unexpected type for channel %d: %s", id, type(channel))
+                return None
+
+            return channel
+
+        try:
+            channel = await self.fetch_channel(id)
+        except Exception:
+            logger.warning("unable to retrieve channel %d", id)
+        else:
+            if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+                logger.warning("unexpected type for channel %d: %s", id, type(channel))
+                return None
+
+            return channel
+
+        return None
+
     async def update_status_embeds(self, channel_id: Optional[int] = None):
         """Update status embeds. If `channel_id` is provided, only update the embed for that channel"""
 
@@ -286,9 +309,10 @@ class Bot(commands.Bot):
 
                     assert isinstance(message_id, int)
 
-                    channel = self.get_channel(channel_id)
+                    channel = await self.resolve_channel(channel_id)
 
-                    assert isinstance(channel, discord.TextChannel) or isinstance(channel, discord.Thread)
+                    if not channel:
+                        return
 
                     message = await channel.fetch_message(message_id)
 
@@ -308,14 +332,9 @@ class Bot(commands.Bot):
                         embed.add_field(name="Last Updated", value=f"<t:{int(datetime.now().timestamp())}:R>")
 
                         try:
-                            channel = self.get_channel(channel_id)
+                            channel = await self.resolve_channel(channel_id)
 
                             if not channel:
-                                logger.warning("channel %d not found; skipping", channel_id)
-                                continue
-
-                            if not isinstance(channel, (discord.TextChannel, discord.Thread)):
-                                logger.warning("Channel %d not found or wrong type (%s)", channel_id, type(channel))
                                 continue
 
                             try:
