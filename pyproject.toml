@@ -25,6 +25,7 @@ dependencies = [
     "httpx>=0.28.1",
     "httpx-sse>=0.4.3",
     "idna==3.4",
+    "lxml>=6.0.2",
     "marshmallow==3.19.0",
     "marshmallow-enum==1.5.1",
     "multidict==6.1.0",
