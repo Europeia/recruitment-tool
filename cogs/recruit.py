@@ -119,7 +119,7 @@ class RegisterRecruiterModal(Modal, title="Registration"):
                 await interaction.response.send_message("Registration complete!", ephemeral=True, delete_after=10)
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
-        self.bot.std.error(error)
+        logger.error(error)
         await interation.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
 
