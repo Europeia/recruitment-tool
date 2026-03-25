@@ -1,18 +1,7 @@
-import discord
-
 from discord.ext import commands
 
 from components.bot import Bot
-
-
-def is_authorized():
-    def predicate(ctx: commands.Context):
-        if ctx.author.id not in [230778695713947648, 110600636319440896]:
-            raise commands.MissingPermissions(["Bot Administrator"])
-
-        return True
-
-    return commands.check(predicate)
+from components.checks import is_global_admin
 
 
 class Base(commands.Cog):
@@ -20,7 +9,7 @@ class Base(commands.Cog):
         self.bot = bot
 
     @commands.command(name="sync", description="Sync slash commands")
-    @is_authorized()
+    @is_global_admin()
     async def sync(self, ctx: commands.Context):
         await ctx.defer()
 
@@ -29,13 +18,13 @@ class Base(commands.Cog):
         await ctx.reply("Done!")
 
     @commands.command(name="reload", description="Reload a cog")
-    @is_authorized()
+    @is_global_admin()
     async def reload(self, ctx: commands.Context, cog: str):
         await self.bot.reload_extension(f"cogs.{cog}")
         await ctx.reply(f"Reloaded cog: {cog}")
 
     @commands.command(name="kill", description="Put the bot to sleep")
-    @is_authorized()
+    @is_global_admin()
     async def kill(self, ctx: commands.Context):
         await ctx.reply("Goodbye!")
         await self.bot.close()

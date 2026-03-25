@@ -1,21 +1,16 @@
-import discord
 import logging
-
 from datetime import datetime, timezone
+
+import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from discord.ui import Modal, View
 
-
 from components.bot import Bot
-from components.config.config_manager import configInstance
-from components.errors import WhitelistError, NationNotFound
+from components.checks import is_global_admin
+from components.errors import NationNotFound, WhitelistError
 
 logger = logging.getLogger("main")
-
-
-def is_global_admin(interaction: discord.Interaction) -> bool:
-    return interaction.user.id in configInstance.data.global_administrators
 
 
 class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel"):
