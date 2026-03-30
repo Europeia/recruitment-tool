@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 from components.bot import Bot
-from components.checks import is_global_admin
+from components.checks import is_global_admin_text
 
 
 class Base(commands.Cog):
@@ -9,22 +9,21 @@ class Base(commands.Cog):
         self.bot = bot
 
     @commands.command(name="sync", description="Sync slash commands")
-    @is_global_admin()
+    @commands.check(is_global_admin_text)
     async def sync(self, ctx: commands.Context):
         await ctx.defer()
 
-        synced = await self.bot.tree.sync()
-        print(synced)
+        await self.bot.tree.sync()
         await ctx.reply("Done!")
 
     @commands.command(name="reload", description="Reload a cog")
-    @is_global_admin()
+    @commands.check(is_global_admin_text)
     async def reload(self, ctx: commands.Context, cog: str):
         await self.bot.reload_extension(f"cogs.{cog}")
         await ctx.reply(f"Reloaded cog: {cog}")
 
     @commands.command(name="kill", description="Put the bot to sleep")
-    @is_global_admin()
+    @commands.check(is_global_admin_text)
     async def kill(self, ctx: commands.Context):
         await ctx.reply("Goodbye!")
         await self.bot.close()
