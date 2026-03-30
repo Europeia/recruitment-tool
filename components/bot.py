@@ -288,65 +288,49 @@ class Bot(commands.Bot):
 
         return None
 
+    async def _update_status_embed(self, channel_id: int):
+        logger.info("updating status embed for channel %d", channel_id)
+
+        embed = discord.Embed(title="Recruitment Queue")
+        embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
+        embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
+
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT messageId FROM recruitment_channels WHERE channelId = %s;", channel_id)
+
+                message_id = (await cur.fetchone())[0]
+
+                if type(message_id) is not int:
+                    logger.warning("invalid type for message_id: %d", type(message_id))
+                    return
+
+                channel = await self.resolve_channel(channel_id)
+
+                if not channel:
+                    logger.warning("unable to resolve channel %d", channel_id)
+                    return
+
+                try:
+                    message = await channel.fetch_message(message_id)
+                except discord.NotFound:
+                    logger.warning("message: %d not found, skipping", message_id)
+                    return
+                except Exception as e:
+                    logger.warning("unspecified error while retrieving message %d: %s", message_id, e)
+                    return
+
+                await message.edit(embed=embed)
+
     async def update_status_embeds(self, channel_id: Optional[int] = None):
         """Update status embeds. If `channel_id` is provided, only update the embed for that channel"""
-
         if channel_id:
-            logger.info("updating status embed for channel %d", channel_id)
-        else:
-            logger.info("Updating status embeds")
-
-        if channel_id:
-            embed = discord.Embed(title="Recruitment Queue")
-            embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
-            embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
-
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("SELECT messageId FROM recruitment_channels WHERE channelId = %s;", channel_id)
-
-                    message_id = (await cur.fetchone())[0]
-
-                    if type(message_id) is not int:
-                        logger.warning("invalid type for message_id: %d", type(message_id))
-                        return
-
-                    channel = await self.resolve_channel(channel_id)
-
-                    if not channel:
-                        return
-
-                    message = await channel.fetch_message(message_id)
-
-                    await message.edit(embed=embed)
-
+            await self._update_status_embed(channel_id)
         else:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("SELECT channelId, messageId FROM recruitment_channels;")
-                    recruitment_views = await cur.fetchall()
+                    await cur.execute("SELECT channelId FROM recruitment_channels;")
+                    channels = await cur.fetchall()
 
-                    for channel_id, message_id in recruitment_views:
-                        if type(channel_id) is not int or type(message_id) is not int:
-                            logger.warning("invalid type for channel_id: %d, message_id: %d", type(channel_id), type(message_id))
-                            continue
-
-                        embed = discord.Embed(title="Recruitment Queue")
-                        embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
-                        embed.add_field(name="Last Updated", value=f"<t:{int(datetime.now().timestamp())}:R>")
-
-                        try:
-                            channel = await self.resolve_channel(channel_id)
-
-                            if not channel:
-                                continue
-
-                            try:
-                                message = await channel.fetch_message(message_id)
-                            except discord.NotFound:
-                                logger.warning("message: %d not found, skipping", message_id)
-                                continue
-
-                            await message.edit(embed=embed)
-                        except Exception:
-                            logger.exception("error updating channel_id: %d", channel_id)
+                    for channel in channels:
+                        await self._update_status_embed(channel[0])
