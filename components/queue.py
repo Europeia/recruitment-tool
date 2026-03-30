@@ -69,9 +69,12 @@ class Queue:
     _nations: List[Nation]
     _last_updated: datetime
 
-    def __init__(self, whitelist: List[str] = []):
+    def __init__(self, whitelist=None):
+        if whitelist is None:
+            whitelist = []
         self._nations = []
         self._whitelist = whitelist
+        self._last_updated = datetime.now(timezone.utc)
 
     def __repr__(self):
         return f"<Queue nations={len(self._nations)}>"
