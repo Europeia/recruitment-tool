@@ -333,4 +333,8 @@ class Bot(commands.Bot):
                     channels = await cur.fetchall()
 
                     for channel in channels:
-                        await self._update_status_embed(channel[0])
+                        if type(c_id := channel[0]) is not int:
+                            logger.warning("invalid type for channel_id: %d", type(channel_id))
+                            continue
+
+                        await self._update_status_embed(c_id)
