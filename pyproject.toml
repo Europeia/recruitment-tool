@@ -36,6 +36,7 @@ dependencies = [
     "pymysql==1.1.0",
     "python-dateutil==2.8.2",
     "python-dotenv==1.0.0",
+    "ruff>=0.15.7",
     "six==1.16.0",
     "soupsieve==2.4",
     "stamina>=25.2.0",
