@@ -210,14 +210,17 @@ class RecruitmentCog(commands.Cog):
     @app_commands.guild_only()
     @app_commands.checks.has_permissions(administrator=True)
     async def register_recruitment_channel(self, interaction: discord.Interaction):
-        assert interaction.guild is not None
+        guild = interaction.guild
+
+        if not guild:
+            raise app_commands.AppCommandError("command must be run in a guild")
 
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT id FROM whitelist WHERE serverId = %s;", (interaction.guild.id,))
 
                 if not await cur.fetchone():
-                    raise WhitelistError(interaction.user, interaction.guild)
+                    raise WhitelistError(interaction.user, guild)
 
         await interaction.response.send_modal(RegisterRecruitmentChannelModal(self.bot))
 

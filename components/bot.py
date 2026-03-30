@@ -1,12 +1,12 @@
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
+
 import aiohttp
 import aiomysql
 import discord
-import logging
-
 from bs4 import BeautifulSoup as bs
-from datetime import datetime, timedelta, timezone
 from discord.ext import commands
-from typing import List, Optional
 
 from components.config.config_manager import configInstance
 from components.errors import LastRecruitmentTooRecent, NotRegistered, TooManyRequests
@@ -307,7 +307,9 @@ class Bot(commands.Bot):
 
                     message_id = (await cur.fetchone())[0]
 
-                    assert isinstance(message_id, int)
+                    if type(message_id) is not int:
+                        logger.warning("invalid type for message_id: %d", type(message_id))
+                        return
 
                     channel = await self.resolve_channel(channel_id)
 
@@ -325,7 +327,9 @@ class Bot(commands.Bot):
                     recruitment_views = await cur.fetchall()
 
                     for channel_id, message_id in recruitment_views:
-                        assert type(channel_id) is int and type(message_id) is int
+                        if type(channel_id) is not int or type(message_id) is not int:
+                            logger.warning("invalid type for channel_id: %d, message_id: %d", type(channel_id), type(message_id))
+                            continue
 
                         embed = discord.Embed(title="Recruitment Queue")
                         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
