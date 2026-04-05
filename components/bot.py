@@ -232,6 +232,36 @@ class Bot(commands.Bot):
 
                 return await cur.fetchall()
 
+    async def get_streaks(self, channel_id: int):
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """WITH daily AS (
+                        SELECT telegrams.recruiterId, DATE(telegrams.timestamp) AS dt
+                        FROM telegrams
+                        JOIN users ON users.id = telegrams.recruiterId
+                        WHERE telegrams.channelId = (
+                            SELECT id FROM recruitment_channels WHERE channelId = %s
+                        )
+                        GROUP BY telegrams.recruiterId, DATE(telegrams.timestamp)
+                    ),
+                    islands AS (
+                        SELECT recruiterId, dt,
+                               DATE_SUB(dt, INTERVAL ROW_NUMBER() OVER (PARTITION BY recruiterId ORDER BY dt) DAY) AS island
+                        FROM daily
+                    )
+                    SELECT users.nation, COUNT(*) AS streak_days
+                    FROM islands
+                    JOIN users ON users.id = islands.recruiterId
+                    GROUP BY islands.recruiterId, islands.island
+                    HAVING MAX(dt) >= CURDATE() - INTERVAL 1 DAY
+                    ORDER BY streak_days DESC;
+                    """,
+                    (channel_id,),
+                )
+
+                return await cur.fetchall()
+
     async def create_recruitment_response(self, user: discord.User, channel_id: int):
         from cogs.recruit import TelegramView
 
@@ -320,7 +350,9 @@ class Bot(commands.Bot):
                     logger.warning("unspecified error while retrieving message %d: %s", message_id, e)
                     return
 
-                await message.edit(embed=embed)
+                from cogs.recruit import RecruitView
+
+                await message.edit(embed=embed, view=RecruitView(self))
 
     async def update_status_embeds(self, channel_id: Optional[int] = None):
         """Update status embeds. If `channel_id` is provided, only update the embed for that channel"""

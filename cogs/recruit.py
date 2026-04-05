@@ -174,6 +174,16 @@ class RecruitView(View):
     async def report(self, interaction: discord.Interaction, _button: discord.ui.button):
         await interaction.response.send_modal(ReportModal(self.bot))
 
+    @discord.ui.button(label="Streaks", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:streaks")
+    async def streaks(self, interaction: discord.Interaction, _button: discord.ui.button):
+        result = await self.bot.get_streaks(interaction.channel_id)
+
+        if result:
+            resp = "\n".join([f"{nation}: {days} day{'s' if days != 1 else ''}" for nation, days in result])
+        else:
+            resp = "No active streaks"
+        await interaction.response.send_message(f"Active Recruitment Streaks\n```{resp}```", ephemeral=True)
+
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
         logger.error(error)
         await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
