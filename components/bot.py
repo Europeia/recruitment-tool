@@ -217,14 +217,15 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    """SELECT users.nation, SUM(nationCount) AS 'tgcount'
+                    """SELECT users.nation, SUM(nationCount) AS 'tgcount',
+                    COUNT(DISTINCT DATE(telegrams.timestamp)) AS 'days'
                     FROM telegrams
                     JOIN users on users.id = telegrams.recruiterId
                     WHERE telegrams.timestamp BETWEEN %s AND %s
                     AND telegrams.channelId = (
                         SELECT id FROM recruitment_channels WHERE channelId = %s
                     )
-                    GROUP BY users.id 
+                    GROUP BY users.id
                     ORDER BY tgcount DESC;
                     """,
                     (start_time, end_time, channel_id),

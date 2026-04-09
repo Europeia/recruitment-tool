@@ -119,9 +119,10 @@ class RegisterRecruiterModal(Modal, title="Registration"):
 
 
 class ReportModal(Modal, title="Recruitment Report"):
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: Bot, count_only: bool = False):
         super().__init__(timeout=None)
         self.bot = bot
+        self.count_only = count_only
 
     start_time = discord.ui.TextInput(
         label="Start Time",
@@ -145,7 +146,10 @@ class ReportModal(Modal, title="Recruitment Report"):
 
         result = await self.bot.get_telegrams(start_time, end_time, interaction.channel_id)
 
-        resp = "\n".join([f"{nation}: {count}" for nation, count in result])
+        if self.count_only:
+            resp = "\n".join([f"{nation}: {count}" for nation, count, _days in result])
+        else:
+            resp = "\n".join([f"{nation}: {count} ({days}d)" for nation, count, days in result])
         await interaction.response.send_message(
             f"Recruitment Report: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```", ephemeral=True
         )
@@ -154,6 +158,29 @@ class ReportModal(Modal, title="Recruitment Report"):
         logger.error(error)
         await interation.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
+
+class ReportTypeView(View):
+    def __init__(self, bot: Bot):
+        super().__init__(timeout=60)
+        self.bot = bot
+
+    @discord.ui.button(label="Default", style=discord.ButtonStyle.blurple)
+    async def default_report(self, interaction: discord.Interaction, _button: discord.ui.button):
+        await interaction.response.send_modal(ReportModal(self.bot, count_only=False))
+
+    @discord.ui.button(label="Count Only", style=discord.ButtonStyle.grey)
+    async def count_only_report(self, interaction: discord.Interaction, _button: discord.ui.button):
+        await interaction.response.send_modal(ReportModal(self.bot, count_only=True))
+
+    @discord.ui.button(label="Streaks", style=discord.ButtonStyle.green)
+    async def streaks_report(self, interaction: discord.Interaction, _button: discord.ui.button):
+        result = await self.bot.get_streaks(interaction.channel_id)
+
+        if result:
+            resp = "\n".join([f"{nation}: {days} day{'s' if days != 1 else ''}" for nation, days in result])
+        else:
+            resp = "No active streaks"
+        await interaction.response.send_message(f"Active Recruitment Streaks\n```{resp}```", ephemeral=True)
 
 class RecruitView(View):
     def __init__(self, bot: Bot):
@@ -172,17 +199,7 @@ class RecruitView(View):
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:report")
     async def report(self, interaction: discord.Interaction, _button: discord.ui.button):
-        await interaction.response.send_modal(ReportModal(self.bot))
-
-    @discord.ui.button(label="Streaks", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:streaks")
-    async def streaks(self, interaction: discord.Interaction, _button: discord.ui.button):
-        result = await self.bot.get_streaks(interaction.channel_id)
-
-        if result:
-            resp = "\n".join([f"{nation}: {days} day{'s' if days != 1 else ''}" for nation, days in result])
-        else:
-            resp = "No active streaks"
-        await interaction.response.send_message(f"Active Recruitment Streaks\n```{resp}```", ephemeral=True)
+        await interaction.response.send_message("Select a report type:", view=ReportTypeView(self.bot), ephemeral=True)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
         logger.error(error)
