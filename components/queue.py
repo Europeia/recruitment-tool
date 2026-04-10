@@ -1,6 +1,7 @@
 import aiomysql
 import asyncio
 import discord
+from discord import app_commands
 import httpx
 import json
 import logging
@@ -207,13 +208,19 @@ class QueueManager(AbstractAsyncContextManager):
 
             self._whitelist.remove(region)
 
+    def _get_channel_queue(self, channel_id: int) -> Queue:
+        try:
+            return self._queues[channel_id]
+        except KeyError:
+            raise app_commands.AppCommandError("This channel is not registered as a recruitment channel.")
+
     async def add_to_channel_whitelist(self, channel_id: int, region: str):
         region = region.strip().lower().replace(" ", "_")
 
         if region in self._whitelist:
             return
 
-        if region in self._queues[channel_id].whitelist:
+        if region in self._get_channel_queue(channel_id).whitelist:
             return
 
         async with self._pool.acquire() as conn:
@@ -225,12 +232,12 @@ class QueueManager(AbstractAsyncContextManager):
                     (channel_id, region),
                 )
 
-        self._queues[channel_id].whitelist.append(region)
+        self._get_channel_queue(channel_id).whitelist.append(region)
 
     async def remove_from_channel_whitelist(self, channel_id: int, region: str):
         region = region.strip().lower().replace(" ", "_")
 
-        if region not in self._queues[channel_id].whitelist:
+        if region not in self._get_channel_queue(channel_id).whitelist:
             return
 
         async with self._pool.acquire() as conn:
@@ -242,10 +249,10 @@ class QueueManager(AbstractAsyncContextManager):
                     (region, channel_id),
                 )
 
-        self._queues[channel_id].whitelist.remove(region)
+        self._get_channel_queue(channel_id).whitelist.remove(region)
 
     def list_whitelist(self, channel_id: int):
-        return (self._whitelist, self._queues[channel_id].whitelist)
+        return (self._whitelist, self._get_channel_queue(channel_id).whitelist)
 
     def channel(self, channel_id: int) -> Queue:
         with self._queue_lock:

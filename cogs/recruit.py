@@ -33,6 +33,31 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
             async with conn.cursor() as cur:
                 region = self.region.value.strip().lower().replace(" ", "_")
 
+                # Check if channel is already registered in the database
+                await cur.execute(
+                    "SELECT id FROM recruitment_channels WHERE channelId = %s;",
+                    (interaction.channel.id,),
+                )
+
+                if await cur.fetchone():
+                    # Channel exists in DB but may not be loaded in memory — reload it
+                    if interaction.channel.id not in self.bot.queue_manager._queues:
+                        await cur.execute(
+                            "SELECT region FROM exceptions WHERE channelId = (SELECT id FROM recruitment_channels WHERE channelId = %s);",
+                            (interaction.channel.id,),
+                        )
+                        regions = [r[0] for r in await cur.fetchall()]
+                        self.bot.queue_manager.add_channel(interaction.channel.id, regions)
+                        await interaction.response.send_message(
+                            f"Channel was already registered but not loaded. Reloaded with regions: {', '.join(regions)}",
+                            ephemeral=True,
+                        )
+                    else:
+                        await interaction.response.send_message(
+                            "This channel is already registered as a recruitment channel.", ephemeral=True
+                        )
+                    return
+
                 message = await interaction.channel.send(view=RecruitView(self.bot))
 
                 try:
@@ -235,7 +260,7 @@ class RecruitmentCog(commands.Cog):
 
         await self.bot.queue_manager.add_to_channel_whitelist(interaction.channel_id, region)
 
-        await interaction.response.send_message(f"region: {region: } added to whitelist", ephemeral=True)
+        await interaction.response.send_message(f"region: {region} added to whitelist", ephemeral=True)
 
     @whitelist_command_group.command(name="remove", description="remove a region from this channel's ignore list")
     @app_commands.checks.has_permissions(administrator=True)
