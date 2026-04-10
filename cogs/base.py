@@ -7,7 +7,7 @@ from components.bot import Bot
 
 def is_authorized():
     def predicate(ctx: commands.Context):
-        if ctx.author.id not in [230778695713947648, 110600636319440896]:
+        if ctx.author.id not in [230778695713947648, 110600636319440896, 134499733849899008]:
             raise commands.MissingPermissions(["Bot Administrator"])
 
         return True
