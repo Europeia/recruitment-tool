@@ -153,7 +153,7 @@ class ReportModal(Modal, title="Recruitment Report"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        if self.report_type.value == "streaks":
+        if self.r_type.component.value == "streaks":
             result = await self.bot.get_streaks(interaction.channel_id)
 
             if result:
@@ -168,7 +168,7 @@ class ReportModal(Modal, title="Recruitment Report"):
 
         result = await self.bot.get_telegrams(start_time, end_time, interaction.channel_id)
 
-        if self.report_type.value == "count_only":
+        if self.r_type.component.value == "count_only":
             resp = "\n".join([f"{nation}: {count}" for nation, count, _days in result])
         else:
             resp = "\n".join([f"{nation}: {count} ({days}d)" for nation, count, days in result])
