@@ -127,9 +127,10 @@ class ReportModal(Modal, title="Recruitment Report"):
         text="Report Type",
         component=discord.ui.RadioGroup(
             options=[
-                discord.RadioGroupOption(
-                    label="Streaks"
-                )
+                discord.RadioGroupOption(label="Default", value="default",
+                                         description="Telegram count with days active", default=True),
+                discord.RadioGroupOption(label="Count Only", value="count_only", description="Telegram count only"),
+                discord.RadioGroupOption(label="Streaks", value="streaks", description="Active recruitment streaks"),
             ],
             required=True
         )
