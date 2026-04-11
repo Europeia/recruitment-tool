@@ -233,7 +233,10 @@ class Bot(commands.Bot):
 
                 return await cur.fetchall()
 
-    async def get_streaks(self, channel_id: int):
+    async def get_streaks(self, start_time: datetime, end_time: datetime, channel_id: int):
+        if start_time > end_time:
+            raise Exception("Start time must be before end time")
+
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
@@ -255,10 +258,10 @@ class Bot(commands.Bot):
                     FROM islands
                     JOIN users ON users.id = islands.recruiterId
                     GROUP BY islands.recruiterId, islands.island
-                    HAVING MAX(dt) >= CURDATE() - INTERVAL 1 DAY
+                    HAVING MAX(dt) >= %s AND MIN(dt) <= %s
                     ORDER BY streak_days DESC;
                     """,
-                    (channel_id,),
+                    (channel_id, start_time, end_time),
                 )
 
                 return await cur.fetchall()

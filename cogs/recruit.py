@@ -153,18 +153,20 @@ class ReportModal(Modal, title="Recruitment Report"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        start_time = datetime.fromisoformat(self.start_time.value).replace(tzinfo=timezone.utc)
+        end_time = datetime.fromisoformat(self.end_time.value).replace(tzinfo=timezone.utc)
+
         if self.r_type.component.value == "streaks":
-            result = await self.bot.get_streaks(interaction.channel_id)
+            result = await self.bot.get_streaks(start_time, end_time, interaction.channel_id)
 
             if result:
                 resp = "\n".join([f"{nation}: {days} day{'s' if days != 1 else ''}" for nation, days in result])
             else:
                 resp = "No active streaks"
-            await interaction.response.send_message(f"Active Recruitment Streaks\n```{resp}```", ephemeral=True)
+            await interaction.response.send_message(
+                f"Recruitment Streaks: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```", ephemeral=True
+            )
             return
-
-        start_time = datetime.fromisoformat(self.start_time.value).replace(tzinfo=timezone.utc)
-        end_time = datetime.fromisoformat(self.end_time.value).replace(tzinfo=timezone.utc)
 
         result = await self.bot.get_telegrams(start_time, end_time, interaction.channel_id)
 
