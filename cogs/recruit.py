@@ -123,12 +123,16 @@ class ReportModal(Modal, title="Recruitment Report"):
         super().__init__(timeout=None)
         self.bot = bot
 
-    report_type = discord.ui.RadioGroup(
-        options=[
-            discord.RadioGroupOption(label="Default", value="default", description="Telegram count with days active", default=True),
-            discord.RadioGroupOption(label="Count Only", value="count_only", description="Telegram count only"),
-            discord.RadioGroupOption(label="Streaks", value="streaks", description="Active recruitment streaks"),
-        ],
+    r_type = discord.ui.Label(
+        text="Report Type",
+        component=discord.ui.RadioGroup(
+            options=[
+                discord.RadioGroupOption(
+                    label="Streaks"
+                )
+            ],
+            required=True
+        )
     )
 
     start_time = discord.ui.TextInput(
