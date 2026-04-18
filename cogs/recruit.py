@@ -138,27 +138,36 @@ class ReportModal(Modal, title="Recruitment Report"):
         )
     )
 
-    start_time = discord.ui.TextInput(
-        label="Start Time",
-        placeholder="YYYY-MM-DD HH:MM:SS",
-        default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        min_length=10,
-        max_length=19,
+    start_time = discord.ui.Label(
+        text="Start Time",
+        component=discord.ui.TextInput(
+            placeholder="YYYY-MM-DD HH:MM:SS",
+            default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            min_length=10,
+            max_length=19,
+        )
     )
 
-    end_time = discord.ui.TextInput(
-        label="End Time",
-        placeholder="YYYY-MM-DD HH:MM:SS",
-        default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        min_length=10,
-        max_length=19,
+    end_time = discord.ui.Label(
+        text="End Time",
+        component=discord.ui.TextInput(
+            placeholder="YYYY-MM-DD HH:MM:SS",
+            default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            min_length=10,
+            max_length=19,
+        )
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        start_time = datetime.fromisoformat(self.start_time.value).replace(tzinfo=timezone.utc)
-        end_time = datetime.fromisoformat(self.end_time.value).replace(tzinfo=timezone.utc)
+        assert isinstance(self.r_type.component, discord.ui.RadioGroup)
+        assert isinstance(self.start_time.component, discord.ui.TextInput)
+        assert isinstance(self.end_time.component, discord.ui.TextInput)
 
-        if self.r_type.component.value == "streaks":
+        start_time = datetime.fromisoformat(self.start_time.component.value).replace(tzinfo=timezone.utc)
+        end_time = datetime.fromisoformat(self.end_time.component.value).replace(tzinfo=timezone.utc)
+        report_type = self.r_type.component.value
+
+        if report_type == "streaks":
             result = await self.bot.get_streaks(start_time, end_time, interaction.channel_id)
 
             if result:
@@ -166,13 +175,14 @@ class ReportModal(Modal, title="Recruitment Report"):
             else:
                 resp = "No active streaks"
             await interaction.response.send_message(
-                f"Recruitment Streaks: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```", ephemeral=True
+                f"Recruitment Streaks: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```",
+                ephemeral=True
             )
             return
 
         result = await self.bot.get_telegrams(start_time, end_time, interaction.channel_id)
 
-        if self.r_type.component.value == "count_only":
+        if report_type == "count_only":
             resp = "\n".join([f"{nation}: {count}" for nation, count, _days in result])
         else:
             resp = "\n".join([f"{nation}: {count} ({days}d)" for nation, count, days in result])
