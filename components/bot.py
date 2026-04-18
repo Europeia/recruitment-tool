@@ -61,11 +61,12 @@ class Bot(commands.Bot):
 
     def __init__(self, session: aiohttp.ClientSession, ql: QueueManager, pool: aiomysql.Pool):
         intents = discord.Intents.default()
-        intents.message_content = True
+        # intents.message_content = True
 
         super().__init__(command_prefix="!", intents=intents)
 
-        self._headers = {"User-Agent": f"Aperta Recruitment Bot, developed by nation=upc, run by {configInstance.data.operator}"}
+        self._headers = {
+            "User-Agent": f"Aperta Recruitment Bot, developed by nation=upc, run by {configInstance.data.operator}"}
         self._session = session
         self._pool = pool
         self._ratelimit = None
@@ -138,12 +139,12 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 num = await cur.execute(
-                    """SELECT id 
-                    FROM users 
-                    WHERE discordId = %s 
-                    AND channelId = (
-                        SELECT id FROM recruitment_channels WHERE channelId = %s
-                    );""",
+                    """SELECT id
+                       FROM users
+                       WHERE discordId = %s
+                         AND channelId = (SELECT id
+                                          FROM recruitment_channels
+                                          WHERE channelId = %s);""",
                     (user.id, channel_id),
                 )
 
@@ -157,11 +158,11 @@ class Bot(commands.Bot):
             async with conn.cursor() as cur:
                 num = await cur.execute(
                     """SELECT id, nation, recruitTemplate, allowRecruitmentAt, foundedTime
-                    FROM users
-                    WHERE discordId = %s
-                    AND channelId = (
-                        SELECT id FROM recruitment_channels WHERE channelId = %s
-                    );
+                       FROM users
+                       WHERE discordId = %s
+                         AND channelId = (SELECT id
+                                          FROM recruitment_channels
+                                          WHERE channelId = %s);
                     """,
                     (user.id, channel_id),
                 )
@@ -190,8 +191,8 @@ class Bot(commands.Bot):
 
                 await cur.execute(
                     """UPDATE users
-                    SET allowRecruitmentAt = %s
-                    WHERE id = %s;
+                       SET allowRecruitmentAt = %s
+                       WHERE id = %s;
                     """,
                     (next_recruitment_timestamp, recruiter.id),
                 )
@@ -203,9 +204,9 @@ class Bot(commands.Bot):
             async with conn.cursor() as cur:
                 await cur.execute(
                     """INSERT INTO telegrams (recruiterId, nationCount, channelId)
-                    VALUES (%s, %s, (
-                        SELECT id FROM recruitment_channels WHERE channelId = %s
-                    ));
+                       VALUES (%s, %s, (SELECT id
+                                        FROM recruitment_channels
+                                        WHERE channelId = %s));
                     """,
                     (recruiter.id, nation_count, recruiter.channel_id),
                 )
@@ -217,17 +218,52 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    """SELECT users.nation, SUM(nationCount) AS 'tgcount'
-                    FROM telegrams
-                    JOIN users on users.id = telegrams.recruiterId
-                    WHERE telegrams.timestamp BETWEEN %s AND %s
-                    AND telegrams.channelId = (
-                        SELECT id FROM recruitment_channels WHERE channelId = %s
-                    )
-                    GROUP BY users.id 
-                    ORDER BY tgcount DESC;
+                    """SELECT users.nation,
+                              SUM(nationCount)                          AS 'tgcount',
+                              COUNT(DISTINCT DATE(telegrams.timestamp)) AS 'days'
+                       FROM telegrams
+                                JOIN users on users.id = telegrams.recruiterId
+                       WHERE telegrams.timestamp BETWEEN %s AND %s
+                         AND telegrams.channelId = (SELECT id
+                                                    FROM recruitment_channels
+                                                    WHERE channelId = %s)
+                       GROUP BY users.id
+                       ORDER BY tgcount DESC;
                     """,
                     (start_time, end_time, channel_id),
+                )
+
+                return await cur.fetchall()
+
+    async def get_streaks(self, start_time: datetime, end_time: datetime, channel_id: int):
+        if start_time > end_time:
+            raise Exception("Start time must be before end time")
+
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """WITH daily AS (SELECT telegrams.recruiterId, DATE(telegrams.timestamp) AS dt
+                                      FROM telegrams
+                                               JOIN users ON users.id = telegrams.recruiterId
+                                      WHERE telegrams.channelId = (SELECT id
+                                                                   FROM recruitment_channels
+                                                                   WHERE channelId = %s)
+                                      GROUP BY telegrams.recruiterId, DATE(telegrams.timestamp)),
+                            islands AS (SELECT recruiterId,
+                                               dt,
+                                               DATE_SUB(dt, INTERVAL
+                                                        ROW_NUMBER() OVER (PARTITION BY recruiterId ORDER BY dt)
+                                                        DAY) AS island
+                                        FROM daily)
+                       SELECT users.nation, COUNT(*) AS streak_days
+                       FROM islands
+                                JOIN users ON users.id = islands.recruiterId
+                       GROUP BY islands.recruiterId, islands.island
+                       HAVING MAX(dt) >= %s
+                          AND MIN(dt) <= %s
+                       ORDER BY streak_days DESC;
+                    """,
+                    (channel_id, start_time, end_time),
                 )
 
                 return await cur.fetchall()
@@ -250,7 +286,8 @@ class Bot(commands.Bot):
         await self.update_telegram_count(recruiter, len(nations))
 
         embed = discord.Embed(title="Recruit", color=int("2d0001", 16))
-        embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
+        embed.add_field(name="Nations",
+                        value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
         embed.add_field(name="Template", value=f"```{recruiter.template}```", inline=False)
         embed.set_footer(text=f"Initiated by {recruiter.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
 
@@ -293,7 +330,8 @@ class Bot(commands.Bot):
 
         embed = discord.Embed(title="Recruitment Queue")
         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
-        embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
+        embed.add_field(name="Last Updated",
+                        value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
 
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
@@ -320,7 +358,9 @@ class Bot(commands.Bot):
                     logger.warning("unspecified error while retrieving message %d: %s", message_id, e)
                     return
 
-                await message.edit(embed=embed)
+                from cogs.recruit import RecruitView
+
+                await message.edit(embed=embed, view=RecruitView(self))
 
     async def update_status_embeds(self, channel_id: Optional[int] = None):
         """Update status embeds. If `channel_id` is provided, only update the embed for that channel"""
