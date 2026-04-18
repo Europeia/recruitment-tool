@@ -60,45 +60,66 @@ class RegisterRecruiterModal(Modal, title="Registration"):
         super().__init__(timeout=None)
         self.bot = bot
 
-    nation = discord.ui.TextInput(label="Nation", placeholder="Enter your nation name", min_length=3, max_length=40)
-
-    recruitment_template = discord.ui.TextInput(
-        label="Recruitment Template", placeholder="Enter your recruitment template", min_length=10, max_length=20
+    nation = discord.ui.Label(
+        text="Nation",
+        component=discord.ui.TextInput(
+            placeholder="Enter your nation name",
+            min_length=3,
+            max_length=40,
+        )
     )
 
-    session_length = discord.ui.TextInput(
-        label="Session Length (in seconds)", placeholder="Session length (45 - 600 seconds)", default="60",
-        min_length=1, max_length=3
+    recruitment_template = discord.ui.Label(
+        text="Recruitment Template",
+        component=discord.ui.TextInput(
+            placeholder="Enter your recruitment template",
+            min_length=10,
+            max_length=20,
+        )
+    )
+
+    session_length = discord.ui.Label(
+        text="Session Length (in seconds)",
+        component=discord.ui.TextInput(
+            placeholder="Session length (45 - 600 seconds)",
+            default="60",
+            min_length=1,
+            max_length=3
+        )
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        assert isinstance(self.nation.component, discord.ui.TextInput)
+        assert isinstance(self.recruitment_template.component, discord.ui.TextInput)
+        assert isinstance(self.session_length.component, discord.ui.TextInput)
+
+        nation = self.nation.component.value.strip().lower().replace(" ", "_")
+        template = self.recruitment_template.component.value.replace("%", "")
+
+        try:
+            session_length = int(self.session_length.component.value)
+        except ValueError:
+            raise Exception("Session length must be a number")
+        else:
+            if session_length < 45 or session_length > 600:
+                raise Exception("Session length must be between 45 and 600 seconds")
+
+        try:
+            founded_time = datetime.fromtimestamp(
+                int(
+                    (await self.bot.request(
+                        f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=foundedtime"))
+                    .find("FOUNDEDTIME")
+                    .text
+                )
+            )
+        except AttributeError:
+            raise NationNotFound(interaction.user, nation)
+
+        recruiter_id = await self.bot.get_recruiter_id(interaction.user, interaction.channel_id)
+
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                nation = self.nation.value.strip().lower().replace(" ", "_")
-                template = self.recruitment_template.value.replace("%", "")
-
-                try:
-                    session_length = int(self.session_length.value)
-                except ValueError:
-                    raise Exception("Session length must be a number")
-
-                if session_length < 45 or session_length > 600:
-                    raise Exception("Session length must be between 45 and 600 seconds")
-
-                try:
-                    founded_time = datetime.fromtimestamp(
-                        int(
-                            (await self.bot.request(
-                                f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=foundedtime"))
-                            .find("FOUNDEDTIME")
-                            .text
-                        )
-                    )
-                except AttributeError:
-                    raise NationNotFound(interaction.user, nation)
-
-                recruiter_id = await self.bot.get_recruiter_id(interaction.user, interaction.channel_id)
-
                 if recruiter_id:
                     await cur.execute(
                         "UPDATE users SET nation = %s, recruitTemplate = %s, sessionLength = %s, foundedTime = %s WHERE id = %s;",
