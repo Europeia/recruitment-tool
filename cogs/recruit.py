@@ -18,18 +18,27 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         super().__init__(timeout=None)
         self.bot = bot
 
-    region = discord.ui.TextInput(label="Region", min_length=1, max_length=40)
+    region = discord.ui.Label(
+        text="Region",
+        component=discord.ui.TextInput(
+            placeholder="Enter your region name",
+            min_length=1,
+            max_length=40,
+        )
+    )
 
     async def on_submit(self, interaction: discord.Interaction):
         if self.is_finished() and self.region.value != "":
             raise ValueError("Region cannot be empty")
 
+        assert isinstance(self.region.component, discord.ui.TextInput)
+
+        region = self.region.component.value.strip().lower().replace(" ", "_")
+
+        message = await interaction.channel.send(view=RecruitView(self.bot))
+
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                region = self.region.value.strip().lower().replace(" ", "_")
-
-                message = await interaction.channel.send(view=RecruitView(self.bot))
-
                 try:
                     await cur.execute(
                         "INSERT INTO recruitment_channels (serverId, channelId, messageId) VALUES (%s, %s, %s);",
