@@ -67,7 +67,8 @@ class RegisterRecruiterModal(Modal, title="Registration"):
     )
 
     session_length = discord.ui.TextInput(
-        label="Session Length (in seconds)", placeholder="Session length (45 - 600 seconds)", default="60", min_length=1, max_length=3
+        label="Session Length (in seconds)", placeholder="Session length (45 - 600 seconds)", default="60",
+        min_length=1, max_length=3
     )
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -87,7 +88,8 @@ class RegisterRecruiterModal(Modal, title="Registration"):
                 try:
                     founded_time = datetime.fromtimestamp(
                         int(
-                            (await self.bot.request(f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=foundedtime"))
+                            (await self.bot.request(
+                                f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=foundedtime"))
                             .find("FOUNDEDTIME")
                             .text
                         )
@@ -175,7 +177,8 @@ class ReportModal(Modal, title="Recruitment Report"):
         else:
             resp = "\n".join([f"{nation}: {count} ({days}d)" for nation, count, days in result])
         await interaction.response.send_message(
-            f"Recruitment Report: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```", ephemeral=True
+            f"Recruitment Report: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```",
+            ephemeral=True
         )
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
@@ -191,7 +194,8 @@ class RecruitView(View):
     @discord.ui.button(label="Recruit", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:recruit")
     async def recruit(self, interaction: discord.Interaction, _button: discord.ui.button):
         embed, view, delete_after = await self.bot.create_recruitment_response(interaction.user, interaction.channel_id)
-        view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
+        view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True,
+                                                               delete_after=3 + delete_after)
         await self.bot.update_status_embeds(interaction.channel_id)
 
     @discord.ui.button(label="Register", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:register")
@@ -282,9 +286,11 @@ class RecruitmentCog(commands.Cog):
         if not interaction.channel_id:
             raise app_commands.AppCommandError("command must be run in a channel")
 
-        global_whitelist, local_whitelist = map("\n".join, self.bot.queue_manager.list_whitelist(interaction.channel_id))
+        global_whitelist, local_whitelist = map("\n".join,
+                                                self.bot.queue_manager.list_whitelist(interaction.channel_id))
 
-        await interaction.response.send_message(f"**Global**{global_whitelist}**Local**{local_whitelist}", ephemeral=True)
+        await interaction.response.send_message(f"**Global**{global_whitelist}**Local**{local_whitelist}",
+                                                ephemeral=True)
 
     admin_command_group = app_commands.Group(name="admin", description="global bot administrator commands")
 
