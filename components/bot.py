@@ -218,7 +218,8 @@ class Bot(commands.Bot):
             async with conn.cursor() as cur:
                 await cur.execute(
                     """SELECT users.nation,
-                              SUM(nationCount) AS 'tgcount', COUNT(DISTINCT DATE (telegrams.timestamp)) AS 'days'
+                              SUM(nationCount)                          AS 'tgcount',
+                              COUNT(DISTINCT DATE(telegrams.timestamp)) AS 'days'
                        FROM telegrams
                                 JOIN users on users.id = telegrams.recruiterId
                        WHERE telegrams.timestamp BETWEEN %s AND %s
@@ -240,24 +241,25 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    """WITH daily AS (SELECT telegrams.recruiterId, DATE (telegrams.timestamp) AS dt
-                       FROM telegrams
-                           JOIN users ON users.id = telegrams.recruiterId
-                           JOIN recruitment_channels ON recruitment_channels.id = telegrams.channelId
-                       WHERE recruitment_channels.channelId = %s
-                       GROUP BY telegrams.recruiterId, DATE (telegrams.timestamp)),
-                           islands AS (
-                       SELECT recruiterId, dt, DATE_SUB(dt, INTERVAL
-                           ROW_NUMBER() OVER (PARTITION BY recruiterId ORDER BY dt)
-                           DAY) AS island
-                       FROM daily)
-                    SELECT users.nation, COUNT(*) AS streak_days
-                    FROM islands
-                             JOIN users ON users.id = islands.recruiterId
-                    GROUP BY islands.recruiterId, islands.island
-                    HAVING MAX(dt) >= %s
-                       AND MIN(dt) <= %s
-                    ORDER BY streak_days DESC;
+                    """WITH daily AS (SELECT telegrams.recruiterId, DATE(telegrams.timestamp) AS dt
+                                      FROM telegrams
+                                               JOIN users ON users.id = telegrams.recruiterId
+                                               JOIN recruitment_channels ON recruitment_channels.id = telegrams.channelId
+                                      WHERE recruitment_channels.channelId = %s
+                                      GROUP BY telegrams.recruiterId, DATE(telegrams.timestamp)),
+                            islands AS (SELECT recruiterId,
+                                               dt,
+                                               DATE_SUB(dt, INTERVAL
+                                                        ROW_NUMBER() OVER (PARTITION BY recruiterId ORDER BY dt)
+                                                        DAY) AS island
+                                        FROM daily)
+                       SELECT users.nation, COUNT(*) AS streak_days
+                       FROM islands
+                                JOIN users ON users.id = islands.recruiterId
+                       GROUP BY islands.recruiterId, islands.island
+                       HAVING MAX(dt) >= %s
+                          AND MIN(dt) <= %s
+                       ORDER BY streak_days DESC;
                     """,
                     (channel_id, start_time, end_time),
                 )
