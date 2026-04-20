@@ -259,7 +259,7 @@ class RecruitView(View):
         embed, view, delete_after = await self.bot.create_recruitment_response(interaction.user, interaction.channel_id)
         view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True,
                                                                delete_after=3 + delete_after)
-        await self.bot.update_status_embeds(interaction.channel_id)
+        await self.bot.update_status_embed(interaction.channel_id)
 
     @discord.ui.button(label="Register", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:register")
     async def register(self, interaction: discord.Interaction, _button: discord.ui.button):

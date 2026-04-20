@@ -219,8 +219,7 @@ class Bot(commands.Bot):
             async with conn.cursor() as cur:
                 await cur.execute(
                     """SELECT users.nation,
-                              SUM(nationCount)                          AS 'tgcount',
-                              COUNT(DISTINCT DATE(telegrams.timestamp)) AS 'days'
+                              SUM(nationCount) AS 'tgcount', COUNT(DISTINCT DATE (telegrams.timestamp)) AS 'days'
                        FROM telegrams
                                 JOIN users on users.id = telegrams.recruiterId
                        WHERE telegrams.timestamp BETWEEN %s AND %s
@@ -242,26 +241,26 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    """WITH daily AS (SELECT telegrams.recruiterId, DATE(telegrams.timestamp) AS dt
-                                      FROM telegrams
-                                               JOIN users ON users.id = telegrams.recruiterId
-                                      WHERE telegrams.channelId = (SELECT id
-                                                                   FROM recruitment_channels
-                                                                   WHERE channelId = %s)
-                                      GROUP BY telegrams.recruiterId, DATE(telegrams.timestamp)),
-                            islands AS (SELECT recruiterId,
-                                               dt,
-                                               DATE_SUB(dt, INTERVAL
-                                                        ROW_NUMBER() OVER (PARTITION BY recruiterId ORDER BY dt)
-                                                        DAY) AS island
-                                        FROM daily)
-                       SELECT users.nation, COUNT(*) AS streak_days
-                       FROM islands
-                                JOIN users ON users.id = islands.recruiterId
-                       GROUP BY islands.recruiterId, islands.island
-                       HAVING MAX(dt) >= %s
-                          AND MIN(dt) <= %s
-                       ORDER BY streak_days DESC;
+                    """WITH daily AS (SELECT telegrams.recruiterId, DATE (telegrams.timestamp) AS dt
+                       FROM telegrams
+                           JOIN users
+                       ON users.id = telegrams.recruiterId
+                       WHERE telegrams.channelId = (SELECT id
+                           FROM recruitment_channels
+                           WHERE channelId = %s)
+                       GROUP BY telegrams.recruiterId, DATE (telegrams.timestamp)),
+                           islands AS (
+                       SELECT recruiterId, dt, DATE_SUB(dt, INTERVAL
+                           ROW_NUMBER() OVER (PARTITION BY recruiterId ORDER BY dt)
+                           DAY) AS island
+                       FROM daily)
+                    SELECT users.nation, COUNT(*) AS streak_days
+                    FROM islands
+                             JOIN users ON users.id = islands.recruiterId
+                    GROUP BY islands.recruiterId, islands.island
+                    HAVING MAX(dt) >= %s
+                       AND MIN(dt) <= %s
+                    ORDER BY streak_days DESC;
                     """,
                     (channel_id, start_time, end_time),
                 )
@@ -325,7 +324,7 @@ class Bot(commands.Bot):
 
         return None
 
-    async def _update_status_embed(self, channel_id: int):
+    async def update_status_embed(self, channel_id: int):
         logger.info("updating status embed for channel %d", channel_id)
 
         embed = discord.Embed(title="Recruitment Queue")
@@ -362,19 +361,15 @@ class Bot(commands.Bot):
 
                 await message.edit(embed=embed, view=RecruitView(self))
 
-    async def update_status_embeds(self, channel_id: Optional[int] = None):
-        """Update status embeds. If `channel_id` is provided, only update the embed for that channel"""
-        if channel_id:
-            await self._update_status_embed(channel_id)
-        else:
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("SELECT channelId FROM recruitment_channels;")
-                    channels = await cur.fetchall()
+    async def update_status_embeds(self):
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT channelId FROM recruitment_channels;")
+                channels = await cur.fetchall()
 
-                    for channel in channels:
-                        if type(c_id := channel[0]) is not int:
-                            logger.warning("invalid type for channel_id: %d", type(channel_id))
-                            continue
+                for channel in channels:
+                    if type(channel_id := channel[0]) is not int:
+                        logger.warning("invalid type for channel_id: %s", type(channel_id))
+                        continue
 
-                        await self._update_status_embed(c_id)
+                    await self.update_status_embed(channel_id)
