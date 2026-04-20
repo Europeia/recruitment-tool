@@ -243,11 +243,9 @@ class Bot(commands.Bot):
                 await cur.execute(
                     """WITH daily AS (SELECT telegrams.recruiterId, DATE (telegrams.timestamp) AS dt
                        FROM telegrams
-                           JOIN users
-                       ON users.id = telegrams.recruiterId
-                       WHERE telegrams.channelId = (SELECT id
-                           FROM recruitment_channels
-                           WHERE channelId = %s)
+                           JOIN users ON users.id = telegrams.recruiterId
+                           JOIN recruitment_channels ON recruitment_channels.id = telegrams.channelId
+                       WHERE recruitment_channels.channelId = %s
                        GROUP BY telegrams.recruiterId, DATE (telegrams.timestamp)),
                            islands AS (
                        SELECT recruiterId, dt, DATE_SUB(dt, INTERVAL
