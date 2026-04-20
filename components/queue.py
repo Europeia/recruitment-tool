@@ -19,7 +19,8 @@ from components.errors import EmptyQueue
 
 logger = logging.getLogger("main")
 
-PUPPET_REGEX = re.compile(r"^\d+_[a-z0-9_]+|[a-z0-9_]+_\d+$|^[a-z0-9_]+_m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
+PUPPET_REGEX = re.compile(
+    r"^\d+_[a-z0-9_]+|[a-z0-9_]+_\d+$|^[a-z0-9_]+_m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
 FOUNDING_REGEX = re.compile("^@@([a-z0-9_]+)@@ was founded in %%([a-z0-9_]+)%%.?$")
 MOVE_REGEX = re.compile("^@@([a-z0-9_]+)@@ relocated from %%([a-z0-9_]+)%% to %%([a-z0-9_]+)%%.?$")
 
@@ -104,7 +105,8 @@ class Queue:
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
-        self._nations = [nation for nation in self._nations if (current_time - nation.founding_time).total_seconds() < 3600]
+        self._nations = [nation for nation in self._nations if
+                         (current_time - nation.founding_time).total_seconds() < 3600]
 
     def purge(self):
         self._nations = []
@@ -169,7 +171,7 @@ class QueueManager(AbstractAsyncContextManager):
                     await cur.execute(
                         """SELECT region
                            FROM exceptions
-                               JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
+                                    JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
                            WHERE recruitment_channels.channelId = %s;""",
                         (channel,),
                     )
@@ -246,9 +248,8 @@ class QueueManager(AbstractAsyncContextManager):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    """INSERT INTO exceptions (channelId, region) VALUES (
-                        (SELECT id FROM recruitment_channels WHERE channelId = %s), %s
-                    );""",
+                    """INSERT INTO exceptions (channelId, region)
+                       VALUES ((SELECT id FROM recruitment_channels WHERE channelId = %s), %s);""",
                     (channel_id, region),
                 )
 
@@ -263,9 +264,12 @@ class QueueManager(AbstractAsyncContextManager):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    """DELETE FROM exceptions WHERE region = %s AND channelId = (
-                        SELECT id FROM recruitment_channels WHERE channelId = %s
-                    );""",
+                    """DELETE
+                       FROM exceptions
+                       WHERE region = %s
+                         AND channelId = (SELECT id
+                                          FROM recruitment_channels
+                                          WHERE channelId = %s);""",
                     (region, channel_id),
                 )
 
