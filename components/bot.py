@@ -52,7 +52,7 @@ class Bot(commands.Bot):
     @property
     def request_timestamps(self) -> List[datetime]:
         """A list of timestamps for each request made in the current NS API bucket"""
-        return self.request_timestamps
+        return self._request_timestamps
 
     @property
     def queue_manager(self) -> QueueManager:
