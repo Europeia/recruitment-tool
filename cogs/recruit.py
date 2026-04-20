@@ -378,14 +378,14 @@ class RecruitmentCog(commands.Cog):
     async def add_filter(self, interaction: discord.Interaction, pattern: str):
         await self.bot.queue_manager.add_global_filter(pattern)
 
-        await interaction.response.send_message(f"added global filter: ``{pattern}``", ephemeral=True)
+        await interaction.response.send_message(f"Added global filter: ``{pattern}``.", ephemeral=True)
 
     @filter_command_group.command(name="remove", description="remove a global name filter")
     @app_commands.check(is_global_admin)
     async def remove_filter(self, interaction: discord.Interaction, pattern: str):
         await self.bot.queue_manager.remove_global_filter(pattern)
 
-        await interaction.response.send_message(f"removed global filter: ``{pattern}``", ephemeral=True)
+        await interaction.response.send_message(f"Removed global filter: ``{pattern}``.", ephemeral=True)
 
 
 async def setup(bot: Bot):
