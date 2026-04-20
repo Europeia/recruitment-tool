@@ -28,20 +28,21 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        if self.is_finished() and self.region.value != "":
+        if self.is_finished() and self.region.value == "":
             raise ValueError("Region cannot be empty")
 
         assert isinstance(self.region.component, discord.ui.TextInput)
 
         region = self.region.component.value.strip().lower().replace(" ", "_")
-                # Check if channel is already registered in the database
+
+        async with self.bot.pool.acquire() as conn:
+            async with conn.cursor() as cur:
                 await cur.execute(
                     "SELECT id FROM recruitment_channels WHERE channelId = %s;",
                     (interaction.channel.id,),
                 )
 
                 if await cur.fetchone():
-                    # Channel exists in DB but may not be loaded in memory — reload it
                     if interaction.channel.id not in self.bot.queue_manager._queues:
                         await cur.execute(
                             "SELECT region FROM exceptions WHERE channelId = (SELECT id FROM recruitment_channels WHERE channelId = %s);",
@@ -61,10 +62,6 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
 
                 message = await interaction.channel.send(view=RecruitView(self.bot))
 
-        message = await interaction.channel.send(view=RecruitView(self.bot))
-
-        async with self.bot.pool.acquire() as conn:
-            async with conn.cursor() as cur:
                 try:
                     await cur.execute(
                         "INSERT INTO recruitment_channels (serverId, channelId, messageId) VALUES (%s, %s, %s);",
