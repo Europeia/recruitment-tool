@@ -61,7 +61,6 @@ class Bot(commands.Bot):
 
     def __init__(self, session: aiohttp.ClientSession, ql: QueueManager, pool: aiomysql.Pool):
         intents = discord.Intents.default()
-        # intents.message_content = True
 
         super().__init__(command_prefix="!", intents=intents)
 
