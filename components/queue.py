@@ -301,15 +301,15 @@ class QueueManager(AbstractAsyncContextManager):
         except re.error as e:
             logger.error("invalid regex: %s", pattern)
             raise e
-        else:
-            if filter_to_remove not in self._filters:
-                logger.warning("filter does not exist: %s", pattern)
-                return
 
-            with self._filter_lock:
-                self._filters.remove(filter_to_remove)
+        if filter_to_remove not in self._filters:
+            logger.warning("filter does not exist: %s", pattern)
+            return
 
-            await self._db_remove_filter(pattern)
+        with self._filter_lock:
+            self._filters.remove(filter_to_remove)
+
+        await self._db_remove_filter(pattern)
 
     async def _db_remove_filter(self, pattern: str):
         async with self._pool.acquire() as conn:
