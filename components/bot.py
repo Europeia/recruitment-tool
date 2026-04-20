@@ -156,12 +156,11 @@ class Bot(commands.Bot):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 num = await cur.execute(
-                    """SELECT id, nation, recruitTemplate, allowRecruitmentAt, foundedTime
+                    """SELECT users.id, nation, recruitTemplate, allowRecruitmentAt, foundedTime
                        FROM users
-                       WHERE discordId = %s
-                         AND channelId = (SELECT id
-                                          FROM recruitment_channels
-                                          WHERE channelId = %s);
+                           JOIN recruitment_channels ON recruitment_channels.id = users.channelId
+                       WHERE users.discordId = %s
+                         AND recruitment_channels.channelId = %s;
                     """,
                     (user.id, channel_id),
                 )
