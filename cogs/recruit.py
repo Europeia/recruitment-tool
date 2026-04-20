@@ -308,7 +308,7 @@ class RecruitmentCog(commands.Cog):
         guild = interaction.guild
 
         if not guild:
-            raise app_commands.AppCommandError("command must be run in a guild")
+            raise app_commands.AppCommandError("command must be run in a server")
 
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
