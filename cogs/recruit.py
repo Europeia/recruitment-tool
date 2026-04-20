@@ -45,7 +45,10 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
                 if await cur.fetchone():
                     if interaction.channel.id not in self.bot.queue_manager._queues:
                         await cur.execute(
-                            "SELECT region FROM exceptions WHERE channelId = (SELECT id FROM recruitment_channels WHERE channelId = %s);",
+                            """SELECT region
+                               FROM exceptions
+                                   JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
+                               WHERE recruitment_channels.channelId = %s;""",
                             (interaction.channel.id,),
                         )
                         regions = [r[0] for r in await cur.fetchall()]

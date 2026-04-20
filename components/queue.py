@@ -167,7 +167,10 @@ class QueueManager(AbstractAsyncContextManager):
 
                 for channel in channels:
                     await cur.execute(
-                        "SELECT region FROM exceptions WHERE channelId = (SELECT id FROM recruitment_channels WHERE channelId = %s);",
+                        """SELECT region
+                           FROM exceptions
+                               JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
+                           WHERE recruitment_channels.channelId = %s;""",
                         (channel,),
                     )
 
