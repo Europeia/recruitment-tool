@@ -355,7 +355,10 @@ class Bot(commands.Bot):
 
                 from cogs.recruit import RecruitView
 
-                await message.edit(embed=embed, view=RecruitView(self))
+                try:
+                    await message.edit(embed=embed, view=RecruitView(self))
+                except discord.HTTPException as e:
+                    logger.warning("Failed to edit message %d in channel %d: %s", message_id, channel_id, e)
 
     async def update_status_embeds(self):
         async with self._pool.acquire() as conn:
@@ -365,7 +368,10 @@ class Bot(commands.Bot):
 
                 for channel in channels:
                     if type(channel_id := channel[0]) is not int:
-                        logger.warning("invalid type for channel_id: %s", type(channel_id))
+                        logger.warning("Invalid type for channel_id: %s", type(channel_id))
                         continue
 
-                    await self.update_status_embed(channel_id)
+                    try:
+                        await self.update_status_embed(channel_id)
+                    except Exception as e:
+                        logger.error("Failed to update status embed for channel %d: %s", channel_id, e)
