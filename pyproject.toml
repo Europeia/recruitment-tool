@@ -20,11 +20,12 @@ dependencies = [
     "cron-converter==1.0.2",
     "cryptography==44.0.0",
     "dataclasses-json==0.5.7",
-    "discord-py>=2.6.4",
+    "discord-py>=2.7.0",
     "frozenlist==1.4.1",
     "httpx>=0.28.1",
     "httpx-sse>=0.4.3",
     "idna==3.4",
+    "lxml>=6.0.2",
     "marshmallow==3.19.0",
     "marshmallow-enum==1.5.1",
     "multidict==6.1.0",
@@ -35,6 +36,7 @@ dependencies = [
     "pymysql==1.1.0",
     "python-dateutil==2.8.2",
     "python-dotenv==1.0.0",
+    "ruff>=0.15.7",
     "six==1.16.0",
     "soupsieve==2.4",
     "stamina>=25.2.0",
@@ -43,3 +45,6 @@ dependencies = [
     "urllib3==1.26.15",
     "yarl==1.9.3",
 ]
+
+[tool.uv]
+exclude-newer = "2 weeks"

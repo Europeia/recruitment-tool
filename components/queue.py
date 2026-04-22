@@ -1,27 +1,26 @@
-import aiomysql
 import asyncio
-import discord
-from discord import app_commands
-import httpx
 import json
 import logging
 import re
 import threading
 import time
-
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from httpx_sse import connect_sse, ServerSentEvent
 from typing import List, Self
+
+import aiomysql
+import discord
+import httpx
+from httpx_sse import ServerSentEvent, connect_sse
 from stamina import retry
 
 from components.errors import EmptyQueue
 
-
 logger = logging.getLogger("main")
 
-PUPPET_REGEX = re.compile(r"^\d+_[a-z0-9_]+|[a-z0-9_]+_\d+$|^[a-z0-9_]+_m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
+PUPPET_REGEX = re.compile(
+    r"^\d+_[a-z0-9_]+|[a-z0-9_]+_\d+$|^[a-z0-9_]+_m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
 FOUNDING_REGEX = re.compile("^@@([a-z0-9_]+)@@ was founded in %%([a-z0-9_]+)%%.?$")
 MOVE_REGEX = re.compile("^@@([a-z0-9_]+)@@ relocated from %%([a-z0-9_]+)%% to %%([a-z0-9_]+)%%.?$")
 
@@ -71,9 +70,12 @@ class Queue:
     _nations: List[Nation]
     _last_updated: datetime
 
-    def __init__(self, whitelist: List[str] = []):
+    def __init__(self, whitelist=None):
+        if whitelist is None:
+            whitelist = []
         self._nations = []
         self._whitelist = whitelist
+        self._last_updated = datetime.now(timezone.utc)
 
     def __repr__(self):
         return f"<Queue nations={len(self._nations)}>"
@@ -103,7 +105,8 @@ class Queue:
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
-        self._nations = [nation for nation in self._nations if (current_time - nation.founding_time).total_seconds() < 3600]
+        self._nations = [nation for nation in self._nations if
+                         (current_time - nation.founding_time).total_seconds() < 3600]
 
     def purge(self):
         self._nations = []
@@ -141,6 +144,8 @@ class QueueManager(AbstractAsyncContextManager):
     _pool: aiomysql.Pool
     _queues: dict[int, Queue] = field(default_factory=dict)
     _queue_lock: threading.Lock
+    _filters: List[re.Pattern]
+    _filter_lock: threading.Lock
     _update_thread: threading.Thread
     _running: bool
 
@@ -149,12 +154,14 @@ class QueueManager(AbstractAsyncContextManager):
         self._pool = pool
         self._queues = {}
         self._queue_lock = threading.Lock()
+        self._filters = []
+        self._filter_lock = threading.Lock()
         self._running = True
 
     def __repr__(self):
         return f"<QueueList queues={self._queues}>"
 
-    async def __aenter__(self):
+    async def _init_channels(self):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT channelId FROM recruitment_channels;")
@@ -162,7 +169,10 @@ class QueueManager(AbstractAsyncContextManager):
 
                 for channel in channels:
                     await cur.execute(
-                        "SELECT region FROM exceptions WHERE channelId = (SELECT id FROM recruitment_channels WHERE channelId = %s);",
+                        """SELECT region
+                           FROM exceptions
+                                    JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
+                           WHERE recruitment_channels.channelId = %s;""",
                         (channel,),
                     )
 
@@ -174,6 +184,18 @@ class QueueManager(AbstractAsyncContextManager):
                 regions: List[str] = [line[0] for line in await cur.fetchall()]
 
                 self._whitelist = regions
+
+    async def _init_filters(self):
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT pattern FROM filters;")
+
+                with self._filter_lock:
+                    self._filters = [re.compile(resp[0]) for resp in await cur.fetchall()]
+
+    async def __aenter__(self):
+        await self._init_channels()
+        await self._init_filters()
 
         self._update_thread = threading.Thread(target=self._update, daemon=True)
 
@@ -226,9 +248,8 @@ class QueueManager(AbstractAsyncContextManager):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    """INSERT INTO exceptions (channelId, region) VALUES (
-                        (SELECT id FROM recruitment_channels WHERE channelId = %s), %s
-                    );""",
+                    """INSERT INTO exceptions (channelId, region)
+                       VALUES ((SELECT id FROM recruitment_channels WHERE channelId = %s), %s);""",
                     (channel_id, region),
                 )
 
@@ -243,9 +264,12 @@ class QueueManager(AbstractAsyncContextManager):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    """DELETE FROM exceptions WHERE region = %s AND channelId = (
-                        SELECT id FROM recruitment_channels WHERE channelId = %s
-                    );""",
+                    """DELETE
+                       FROM exceptions
+                       WHERE region = %s
+                         AND channelId = (SELECT id
+                                          FROM recruitment_channels
+                                          WHERE channelId = %s);""",
                     (region, channel_id),
                 )
 
@@ -253,6 +277,52 @@ class QueueManager(AbstractAsyncContextManager):
 
     def list_whitelist(self, channel_id: int):
         return (self._whitelist, self._get_channel_queue(channel_id).whitelist)
+
+    async def add_global_filter(self, pattern: str):
+        try:
+            new_filter = re.compile(pattern)
+        except re.error as e:
+            logger.error("invalid regex: %s", pattern)
+            raise e
+        else:
+            if new_filter in self._filters:
+                logger.warning("filter already exists: %s", pattern)
+                return
+
+            with self._filter_lock:
+                self._filters.append(new_filter)
+
+            await self._db_insert_filter(pattern)
+
+    async def _db_insert_filter(self, pattern: str):
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("INSERT INTO filters (pattern) VALUES (%s);", (pattern,))
+
+    async def remove_global_filter(self, pattern: str):
+        try:
+            filter_to_remove = re.compile(pattern)
+        except re.error as e:
+            logger.error("invalid regex: %s", pattern)
+            raise e
+
+        if filter_to_remove not in self._filters:
+            logger.warning("filter does not exist: %s", pattern)
+            return
+
+        with self._filter_lock:
+            self._filters.remove(filter_to_remove)
+
+        await self._db_remove_filter(pattern)
+
+    async def _db_remove_filter(self, pattern: str):
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("DELETE FROM filters WHERE pattern = %s;", (pattern,))
+
+    def _is_filtered(self, nation: str) -> bool:
+        with self._filter_lock:
+            return any(nation_filter.match(nation) for nation_filter in self._filters)
 
     def channel(self, channel_id: int) -> Queue:
         with self._queue_lock:
@@ -271,7 +341,7 @@ class QueueManager(AbstractAsyncContextManager):
             return self._queues[channel_id].get_nation_count()
 
     def _handle_founding(self, event: FoundingEvent):
-        if PUPPET_REGEX.match(event.nation):
+        if self._is_filtered(event.nation):
             logger.debug("likely puppet founding found; skipping: %s", event.nation)
             return
 
@@ -284,7 +354,7 @@ class QueueManager(AbstractAsyncContextManager):
                 queue.handle_founding(Nation(event.nation, event.region, event.timestamp.astimezone(timezone.utc)))
 
     def _handle_move(self, event: MoveEvent):
-        if PUPPET_REGEX.match(event.nation):
+        if self._is_filtered(event.nation):
             logger.debug("likely puppet move found; skipping: %s", event.nation)
             return
 
@@ -311,8 +381,12 @@ class QueueManager(AbstractAsyncContextManager):
         logger.info("starting update thread")
 
         with httpx.Client(headers=HEADERS, timeout=None) as client:
-            for event in sse_retrying(client, "GET", "https://www.nationstates.net/api/founding+move"):
-                self._handle_event(event)
+            while True:
+                try:
+                    for event in sse_retrying(client, "GET", "https://www.nationstates.net/api/founding+move"):
+                        self._handle_event(event)
+                except Exception:
+                    logger.exception("error in SSE feed")
 
 
 def sse_retrying(client, method, url):
