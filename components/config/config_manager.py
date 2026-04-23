@@ -4,6 +4,7 @@ from logging import Logger
 from os import path
 
 from .config_model import ConfigData
+from .errors import ConfigError
 
 
 class ObjectEncoder(json.JSONEncoder):
@@ -49,16 +50,27 @@ class ConfigManager:
         print("READ")
         try:
             f = open("settings.json", "r")
+        except FileNotFoundError:
+            raise ConfigError(f"settings.json not found at {path.realpath('settings.json')}.")
+
+        try:
             open_message = f"Loading settings from: {path.realpath(f.name)}"
             if hasattr(self, "_std") and self._std is not None:
                 self._std.info(open_message)
             else:
                 print(open_message)
 
-            dict = json.load(f)
-            self._data = ConfigData.from_dict(dict)
-        except Exception as ex:
-            print(ex)
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ConfigError(f"settings.json is malformed: {e}") from e
+        finally:
+            f.close()
+
+        try:
+            self._data = ConfigData.from_dict(data)
+        except KeyError as e:
+            raise ConfigError(f"settings.json is missing required field: {e.args[0]}") from e
         return
 
     def writeConfig(self) -> None:
