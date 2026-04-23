@@ -47,7 +47,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
                         await cur.execute(
                             """SELECT region
                                FROM exceptions
-                                   JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
+                                        JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
                                WHERE recruitment_channels.channelId = %s;""",
                             (interaction.channel.id,),
                         )
@@ -355,8 +355,9 @@ class RecruitmentCog(commands.Cog):
         global_whitelist, local_whitelist = map("\n".join,
                                                 self.bot.queue_manager.list_whitelist(interaction.channel_id))
 
-        await interaction.response.send_message(f"**Global**{global_whitelist}**Local**{local_whitelist}",
-                                                ephemeral=True)
+        await interaction.response.send_message(
+            f"""**Global**\n```{global_whitelist}```\n**Local**\n```{local_whitelist}```""",
+            ephemeral=True)
 
     admin_command_group = app_commands.Group(name="admin", description="global bot administrator commands")
 
