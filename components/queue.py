@@ -406,6 +406,10 @@ class QueueManager(AbstractAsyncContextManager):
         with self._queue_lock:
             self._queues[channel_id] = Queue(whitelist=regions)
 
+    def remove_channel(self, channel_id: int) -> bool:
+        with self._queue_lock:
+            return self._queues.pop(channel_id, None) is not None
+
     def get_nations(self, user: discord.User, channel_id: int, return_count: int = 8) -> List[str]:
         with self._queue_lock:
             return self._queues[channel_id].get_nations(user, return_count)

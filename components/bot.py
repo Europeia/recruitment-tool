@@ -106,6 +106,26 @@ class Bot(commands.Bot):
 
             # await conn.commit()
 
+    async def deregister_recruitment_channel(self, channel_id: int) -> Optional[int]:
+        """Delete a recruitment channel and return its status embed message id, or None if not registered."""
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT messageId FROM recruitment_channels WHERE channelId = %s;",
+                    (channel_id,),
+                )
+                row = await cur.fetchone()
+
+                if row is None:
+                    return None
+
+                await cur.execute(
+                    "DELETE FROM recruitment_channels WHERE channelId = %s;",
+                    (channel_id,),
+                )
+
+                return row[0]
+
     async def request(self, url: str) -> bs:
         current_time = datetime.now(timezone.utc)
 
