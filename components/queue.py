@@ -6,7 +6,7 @@ import threading
 import time
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Self
 
 import aiomysql
@@ -102,6 +102,12 @@ class Queue:
     def get_nation_names(self) -> List[str]:
         return [nation.name for nation in self._nations]
 
+    def snapshot(self) -> List[Nation]:
+        return list(self._nations)
+
+    def restore(self, nations: List[Nation]):
+        self._nations.extend(n for n in nations if n.region not in self._whitelist)
+
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
@@ -196,6 +202,7 @@ class QueueManager(AbstractAsyncContextManager):
     async def __aenter__(self):
         await self._init_channels()
         await self._init_filters()
+        self._load_from_disk()
 
         self._update_thread = threading.Thread(target=self._update, daemon=True)
 
@@ -204,7 +211,74 @@ class QueueManager(AbstractAsyncContextManager):
         return self
 
     async def __aexit__(self, exc_t, exc_v, exc_tb):
+        self._save_to_disk()
         self._running = False
+
+    def _save_to_disk(self, path: str = "queue_state.json"):
+        with self._queue_lock:
+            state = {
+                str(channel_id): [
+                    {
+                        "name": n.name,
+                        "region": n.region,
+                        "founding_time": n.founding_time.isoformat(),
+                    }
+                    for n in queue.snapshot()
+                ]
+                for channel_id, queue in self._queues.items()
+            }
+
+        try:
+            with open(path, "w") as f:
+                json.dump(state, f)
+            logger.info("Saved queue state to %s.", path)
+        except OSError as e:
+            logger.error("Failed to save queue state: %s", e)
+
+    def _load_from_disk(self, path: str = "queue_state.json"):
+        try:
+            with open(path, "r") as f:
+                state = json.load(f)
+        except FileNotFoundError:
+            logger.info("No queue state file found; starting with empty queues.")
+            return
+        except (OSError, json.JSONDecodeError) as e:
+            logger.error("Failed to load queue state: %s", e)
+            return
+
+        current_time = datetime.now(timezone.utc)
+        max_age = timedelta(hours=1)
+
+        for channel_id_str, entries in state.items():
+            try:
+                channel_id = int(channel_id_str)
+            except ValueError:
+                logger.warning("Skipping invalid channel id in queue state: %s.", channel_id_str)
+                continue
+
+            if channel_id not in self._queues:
+                logger.info("Skipping queue state for unregistered channel %d.", channel_id)
+                continue
+
+            nations: List[Nation] = []
+            for entry in entries:
+                try:
+                    founding_time = datetime.fromisoformat(entry["founding_time"])
+                    region = entry["region"]
+                    name = entry["name"]
+                except (KeyError, TypeError, ValueError) as e:
+                    logger.warning("Skipping malformed nation in queue state: %s.", e)
+                    continue
+
+                if current_time - founding_time >= max_age:
+                    continue
+                if region in self._whitelist:
+                    continue
+
+                nations.append(Nation(name, region, founding_time))
+
+            self._queues[channel_id].restore(nations)
+            logger.info("Restored %d nations to queue for channel %d.", len(nations), channel_id)
 
     @property
     def global_whitelist(self):
