@@ -7,7 +7,7 @@ from discord.ext import commands, tasks
 from discord.ui import Modal, View
 
 from components.bot import Bot
-from components.checks import is_global_admin
+from components.checks import is_global_admin, is_global_admin_text
 from components.errors import NationNotFound, WhitelistError
 
 logger = logging.getLogger("main")
@@ -389,6 +389,33 @@ class RecruitmentCog(commands.Cog):
         await self.bot.queue_manager.remove_global_filter(pattern)
 
         await interaction.response.send_message(f"Removed global filter: ``{pattern}``.", ephemeral=True)
+
+    @commands.command(name="deregister", description="Deregister a recruitment channel by ID")
+    @commands.check(is_global_admin_text)
+    async def deregister(self, ctx: commands.Context, channel_id: int):
+        message_id = await self.bot.deregister_recruitment_channel(channel_id)
+
+        if message_id is None:
+            await ctx.reply(f"Channel {channel_id} is not a registered recruitment channel.")
+            return
+
+        # Removes channel from memory; bot.deregister call drops from DB
+        self.bot.queue_manager.remove_channel(channel_id)
+
+        channel = await self.bot.resolve_channel(channel_id)
+        if channel is not None:
+            try:
+                message = await channel.fetch_message(message_id)
+                await message.delete()
+            except discord.NotFound:
+                pass
+            except discord.HTTPException as e:
+                await ctx.reply(
+                    f"Deregistered channel {channel_id}, but failed to delete the status embed: {e}"
+                )
+                return
+
+        await ctx.reply(f"Deregistered channel {channel_id}.")
 
 
 async def setup(bot: Bot):
