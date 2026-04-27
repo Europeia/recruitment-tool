@@ -170,7 +170,7 @@ class QueueManager(AbstractAsyncContextManager):
     async def _init_channels(self):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("SELECT channelId FROM recruitment_channels;")
+                await cur.execute("SELECT channelId FROM recruitment_channels WHERE disabled = FALSE;")
                 channels: List[int] = [channel[0] for channel in await cur.fetchall()]
 
                 for channel in channels:

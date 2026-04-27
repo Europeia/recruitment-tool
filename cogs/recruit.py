@@ -38,11 +38,12 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    "SELECT id FROM recruitment_channels WHERE channelId = %s;",
+                    "SELECT id, disabled FROM recruitment_channels WHERE channelId = %s;",
                     (interaction.channel.id,),
                 )
+                existing = await cur.fetchone()
 
-                if await cur.fetchone():
+                if existing and not existing[1]:
                     if interaction.channel.id not in self.bot.queue_manager._queues:
                         await cur.execute(
                             """SELECT region
@@ -66,24 +67,50 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
                 message = await interaction.channel.send(view=RecruitView(self.bot))
 
                 try:
-                    await cur.execute(
-                        "INSERT INTO recruitment_channels (serverId, channelId, messageId) VALUES (%s, %s, %s);",
-                        (interaction.guild.id, interaction.channel.id, message.id),
-                    )
-
-                    await cur.execute(
-                        "INSERT INTO exceptions (channelId, region) VALUES ("
-                        "(SELECT id FROM recruitment_channels WHERE channelId = %s), %s);",
-                        (interaction.channel.id, region),
-                    )
-
-                    self.bot.queue_manager.add_channel(interaction.channel.id, [region])
+                    if existing:
+                        await cur.execute(
+                            """UPDATE recruitment_channels
+                               SET disabled  = FALSE,
+                                   serverId  = %s,
+                                   messageId = %s
+                               WHERE channelId = %s;""",
+                            (interaction.guild.id, message.id, interaction.channel.id),
+                        )
+                        await cur.execute(
+                            """INSERT IGNORE INTO exceptions (channelId, region)
+                               VALUES ((SELECT id FROM recruitment_channels WHERE channelId = %s), %s);""",
+                            (interaction.channel.id, region),
+                        )
+                        await cur.execute(
+                            """SELECT region
+                               FROM exceptions
+                                   JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
+                               WHERE recruitment_channels.channelId = %s;""",
+                            (interaction.channel.id,),
+                        )
+                        regions = [r[0] for r in await cur.fetchall()]
+                        self.bot.queue_manager.add_channel(interaction.channel.id, regions)
+                        await interaction.response.send_message(
+                            f"Re-enabled channel for region: {region}.", ephemeral=True
+                        )
+                    else:
+                        await cur.execute(
+                            "INSERT INTO recruitment_channels (serverId, channelId, messageId) VALUES (%s, %s, %s);",
+                            (interaction.guild.id, interaction.channel.id, message.id),
+                        )
+                        await cur.execute(
+                            "INSERT INTO exceptions (channelId, region) VALUES ("
+                            "(SELECT id FROM recruitment_channels WHERE channelId = %s), %s);",
+                            (interaction.channel.id, region),
+                        )
+                        self.bot.queue_manager.add_channel(interaction.channel.id, [region])
+                        await interaction.response.send_message(
+                            f"Registered channel for region: {region}", ephemeral=True
+                        )
 
                 except Exception as e:
                     await message.delete()
                     raise e
-                else:
-                    await interaction.response.send_message(f"Registered channel for region: {region}", ephemeral=True)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         logger.exception(error)
@@ -390,9 +417,9 @@ class RecruitmentCog(commands.Cog):
 
         await interaction.response.send_message(f"Removed global filter: ``{pattern}``.", ephemeral=True)
 
-    @commands.command(name="deregister", description="Deregister a recruitment channel by ID")
+    @commands.command(name="disable", description="Disable a recruitment channel by ID")
     @commands.check(is_global_admin_text)
-    async def deregister(self, ctx: commands.Context, channel_id: int):
+    async def disable(self, ctx: commands.Context, channel_id: int):
         message_id = await self.bot.deregister_recruitment_channel(channel_id)
 
         if message_id is None:
