@@ -406,6 +406,8 @@ class RecruitmentCog(commands.Cog):
     @filter_command_group.command(name="add", description="add a global name filter")
     @app_commands.check(is_global_admin)
     async def add_filter(self, interaction: discord.Interaction, pattern: str):
+        pattern = pattern.lower()
+
         await self.bot.queue_manager.add_global_filter(pattern)
 
         await interaction.response.send_message(f"Added global filter: ``{pattern}``.", ephemeral=True)
@@ -413,9 +415,29 @@ class RecruitmentCog(commands.Cog):
     @filter_command_group.command(name="remove", description="remove a global name filter")
     @app_commands.check(is_global_admin)
     async def remove_filter(self, interaction: discord.Interaction, pattern: str):
+        pattern = pattern.lower()
+
         await self.bot.queue_manager.remove_global_filter(pattern)
 
         await interaction.response.send_message(f"Removed global filter: ``{pattern}``.", ephemeral=True)
+
+    @filter_command_group.command(name="test", description="list global filters that match a nation name")
+    @app_commands.check(is_global_admin)
+    async def test_filter(self, interaction: discord.Interaction, nation: str):
+        nation = nation.strip().lower().replace(" ", "_")
+
+        matches = self.bot.queue_manager.matching_filters(nation)
+
+        if not matches:
+            await interaction.response.send_message(
+                f"No global filters match ``{nation}``.", ephemeral=True
+            )
+            return
+
+        formatted = "\n".join(f"- ``{p}``" for p in matches)
+        await interaction.response.send_message(
+            f"Filters matching ``{nation}``:\n{formatted}", ephemeral=True
+        )
 
     @commands.command(name="disable", description="Disable a recruitment channel by ID")
     @commands.check(is_global_admin_text)

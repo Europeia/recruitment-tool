@@ -398,6 +398,10 @@ class QueueManager(AbstractAsyncContextManager):
         with self._filter_lock:
             return any(nation_filter.match(nation) for nation_filter in self._filters)
 
+    def matching_filters(self, nation: str) -> List[str]:
+        with self._filter_lock:
+            return [f.pattern for f in self._filters if f.match(nation)]
+
     def channel(self, channel_id: int) -> Queue:
         with self._queue_lock:
             return self._queues[channel_id]
