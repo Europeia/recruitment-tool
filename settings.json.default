@@ -1,18 +1,19 @@
 {
-  "dbHost": "localhost",
-  "dbPort": 3306,
-  "dbUser": "",
-  "dbPassword": "",
-  "dbName": "ns"
+  "db_host": "localhost",
+  "db_port": 3306,
+  "db_user": "",
+  "db_password": "",
+  "db_name": "ns"
   "operator": "UPC",
-  "guildId": 0,
-  "reportChannelId": 0,
-  "recruitChannelId": 0,
-  "recruitRoleId": 0,
-  "statusMessageId": 0,
-  "pollingRate": 15,
+  "guild_id": 0,
+  "report_channel_id": 0,
+  "recruit_channel_id": 0,
+  "recruit_role_id": 0,
+  "status_message_id": 0,
+  "polling_rate": 15,
   "period": 30,
-  "periodMax": 5,
-  "botToken": "<Discord Bot Token>",
-  "recruitmentExceptions": []
+  "period_max": 5,
+  "bot_token": "<Discord Bot Token>",
+  "recruitment_exceptions": [],
+  "global_administrators": []
 }

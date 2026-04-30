@@ -80,7 +80,7 @@ class Bot(commands.Bot):
 
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("SELECT channelId, messageId FROM recruitment_channels;")
+                await cur.execute("SELECT channelId, messageId FROM recruitment_channels WHERE disabled = FALSE;")
                 recruitment_views = await cur.fetchall()
 
                 for _, message_id in recruitment_views:
@@ -105,6 +105,26 @@ class Bot(commands.Bot):
                     raise Exception("Channel already registered")
 
             # await conn.commit()
+
+    async def deregister_recruitment_channel(self, channel_id: int) -> Optional[int]:
+        """Disable a recruitment channel and return its status embed message id, or None if not actively registered."""
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;",
+                    (channel_id,),
+                )
+                row = await cur.fetchone()
+
+                if row is None:
+                    return None
+
+                await cur.execute(
+                    "UPDATE recruitment_channels SET disabled = TRUE WHERE channelId = %s;",
+                    (channel_id,),
+                )
+
+                return row[0]
 
     async def request(self, url: str) -> bs:
         current_time = datetime.now(timezone.utc)
@@ -142,7 +162,8 @@ class Bot(commands.Bot):
                        FROM users
                                 JOIN recruitment_channels ON recruitment_channels.id = users.channelId
                        WHERE users.discordId = %s
-                         AND recruitment_channels.channelId = %s;""",
+                         AND recruitment_channels.channelId = %s
+                         AND recruitment_channels.disabled = FALSE;""",
                     (user.id, channel_id),
                 )
 
@@ -159,7 +180,8 @@ class Bot(commands.Bot):
                        FROM users
                                 JOIN recruitment_channels ON recruitment_channels.id = users.channelId
                        WHERE users.discordId = %s
-                         AND recruitment_channels.channelId = %s;
+                         AND recruitment_channels.channelId = %s
+                         AND recruitment_channels.disabled = FALSE;
                     """,
                     (user.id, channel_id),
                 )
@@ -331,7 +353,10 @@ class Bot(commands.Bot):
 
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("SELECT messageId FROM recruitment_channels WHERE channelId = %s;", channel_id)
+                await cur.execute(
+                    "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;",
+                    channel_id,
+                )
 
                 message_id = (await cur.fetchone())[0]
 
@@ -364,7 +389,7 @@ class Bot(commands.Bot):
     async def update_status_embeds(self):
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("SELECT channelId FROM recruitment_channels;")
+                await cur.execute("SELECT channelId FROM recruitment_channels WHERE disabled = FALSE;")
                 channels = await cur.fetchall()
 
                 for channel in channels:

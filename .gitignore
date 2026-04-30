@@ -103,9 +103,8 @@ ENV/
 
 # Other stuff
 logs/*
-settings.json
-config.json
+*.json
+*.sql
 queue.txt
 .run/Start Bot.run.xml
 .DS_Store
-schema.sql
