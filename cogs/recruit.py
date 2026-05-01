@@ -19,12 +19,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         self.bot = bot
 
     region = discord.ui.Label(
-        text="Region",
-        component=discord.ui.TextInput(
-            placeholder="Enter your region name",
-            min_length=1,
-            max_length=40,
-        )
+        text="Region", component=discord.ui.TextInput(placeholder="Enter your region name", min_length=1, max_length=40)
     )
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -37,10 +32,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
 
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT id, disabled FROM recruitment_channels WHERE channelId = %s;",
-                    (interaction.channel.id,),
-                )
+                await cur.execute("SELECT id, disabled FROM recruitment_channels WHERE channelId = %s;", (interaction.channel.id,))
                 existing = await cur.fetchone()
 
                 if existing and not existing[1]:
@@ -55,8 +47,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
                         regions = [r[0] for r in await cur.fetchall()]
                         self.bot.queue_manager.add_channel(interaction.channel.id, regions)
                         await interaction.response.send_message(
-                            f"Channel was already registered but not loaded. Reloaded with regions: {', '.join(regions)}",
-                            ephemeral=True,
+                            f"Channel was already registered but not loaded. Reloaded with regions: {', '.join(regions)}", ephemeral=True
                         )
                     else:
                         await interaction.response.send_message(
@@ -90,9 +81,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
                         )
                         regions = [r[0] for r in await cur.fetchall()]
                         self.bot.queue_manager.add_channel(interaction.channel.id, regions)
-                        await interaction.response.send_message(
-                            f"Re-enabled channel for region: {region}.", ephemeral=True
-                        )
+                        await interaction.response.send_message(f"Re-enabled channel for region: {region}.", ephemeral=True)
                     else:
                         await cur.execute(
                             "INSERT INTO recruitment_channels (serverId, channelId, messageId) VALUES (%s, %s, %s);",
@@ -104,9 +93,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
                             (interaction.channel.id, region),
                         )
                         self.bot.queue_manager.add_channel(interaction.channel.id, [region])
-                        await interaction.response.send_message(
-                            f"Registered channel for region: {region}", ephemeral=True
-                        )
+                        await interaction.response.send_message(f"Registered channel for region: {region}", ephemeral=True)
 
                 except Exception as e:
                     await message.delete()
@@ -123,31 +110,17 @@ class RegisterRecruiterModal(Modal, title="Registration"):
         self.bot = bot
 
     nation = discord.ui.Label(
-        text="Nation",
-        component=discord.ui.TextInput(
-            placeholder="Enter your nation name",
-            min_length=3,
-            max_length=40,
-        )
+        text="Nation", component=discord.ui.TextInput(placeholder="Enter your nation name", min_length=3, max_length=40)
     )
 
     recruitment_template = discord.ui.Label(
         text="Recruitment Template",
-        component=discord.ui.TextInput(
-            placeholder="Enter your recruitment template",
-            min_length=10,
-            max_length=20,
-        )
+        component=discord.ui.TextInput(placeholder="Enter your recruitment template", min_length=10, max_length=20),
     )
 
     session_length = discord.ui.Label(
         text="Session Length (in seconds)",
-        component=discord.ui.TextInput(
-            placeholder="Session length (45 - 600 seconds)",
-            default="60",
-            min_length=1,
-            max_length=3
-        )
+        component=discord.ui.TextInput(placeholder="Session length (45 - 600 seconds)", default="60", min_length=1, max_length=3),
     )
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -169,8 +142,7 @@ class RegisterRecruiterModal(Modal, title="Registration"):
         try:
             founded_time = datetime.fromtimestamp(
                 int(
-                    (await self.bot.request(
-                        f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=foundedtime"))
+                    (await self.bot.request(f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=foundedtime"))
                     .find("FOUNDEDTIME")
                     .text
                 )
@@ -212,33 +184,26 @@ class ReportModal(Modal, title="Recruitment Report"):
         text="Report Type",
         component=discord.ui.RadioGroup(
             options=[
-                discord.RadioGroupOption(label="Default", value="default",
-                                         description="Telegram count with days active", default=True),
+                discord.RadioGroupOption(label="Default", value="default", description="Telegram count with days active", default=True),
                 discord.RadioGroupOption(label="Count Only", value="count_only", description="Telegram count only"),
                 discord.RadioGroupOption(label="Streaks", value="streaks", description="Active recruitment streaks"),
             ],
-            required=True
-        )
+            required=True,
+        ),
     )
 
     start_time = discord.ui.Label(
         text="Start Time",
         component=discord.ui.TextInput(
-            placeholder="YYYY-MM-DD HH:MM:SS",
-            default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            min_length=10,
-            max_length=19,
-        )
+            placeholder="YYYY-MM-DD HH:MM:SS", default=datetime.now(timezone.utc).strftime("%Y-%m-%d"), min_length=10, max_length=19
+        ),
     )
 
     end_time = discord.ui.Label(
         text="End Time",
         component=discord.ui.TextInput(
-            placeholder="YYYY-MM-DD HH:MM:SS",
-            default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            min_length=10,
-            max_length=19,
-        )
+            placeholder="YYYY-MM-DD HH:MM:SS", default=datetime.now(timezone.utc).strftime("%Y-%m-%d"), min_length=10, max_length=19
+        ),
     )
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -259,7 +224,7 @@ class ReportModal(Modal, title="Recruitment Report"):
                 resp = "No active streaks"
             await interaction.response.send_message(
                 f"Recruitment Streaks: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```",
-                ephemeral=True
+                ephemeral=True,
             )
             return
 
@@ -270,8 +235,7 @@ class ReportModal(Modal, title="Recruitment Report"):
         else:
             resp = "\n".join([f"{nation}: {count} ({days}d)" for nation, count, days in result])
         await interaction.response.send_message(
-            f"Recruitment Report: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```",
-            ephemeral=True
+            f"Recruitment Report: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```", ephemeral=True
         )
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
@@ -287,8 +251,7 @@ class RecruitView(View):
     @discord.ui.button(label="Recruit", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:recruit")
     async def recruit(self, interaction: discord.Interaction, _button: discord.ui.button):
         embed, view, delete_after = await self.bot.create_recruitment_response(interaction.user, interaction.channel_id)
-        view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True,
-                                                               delete_after=3 + delete_after)
+        view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
         await self.bot.update_status_embed(interaction.channel_id)
 
     @discord.ui.button(label="Register", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:register")
@@ -379,12 +342,11 @@ class RecruitmentCog(commands.Cog):
         if not interaction.channel_id:
             raise app_commands.AppCommandError("command must be run in a channel")
 
-        global_whitelist, local_whitelist = map("\n".join,
-                                                self.bot.queue_manager.list_whitelist(interaction.channel_id))
+        global_whitelist, local_whitelist = map("\n".join, self.bot.queue_manager.list_whitelist(interaction.channel_id))
 
         await interaction.response.send_message(
-            f"""**Global**\n```{global_whitelist}```\n**Local**\n```{local_whitelist}```""",
-            ephemeral=True)
+            f"""**Global**\n```{global_whitelist}```\n**Local**\n```{local_whitelist}```""", ephemeral=True
+        )
 
     admin_command_group = app_commands.Group(name="admin", description="global bot administrator commands")
 
@@ -430,15 +392,11 @@ class RecruitmentCog(commands.Cog):
         matches = self.bot.queue_manager.matching_filters(nation)
 
         if not matches:
-            await interaction.response.send_message(
-                f"No global filters match ``{nation}``.", ephemeral=True
-            )
+            await interaction.response.send_message(f"No global filters match ``{nation}``.", ephemeral=True)
             return
 
         formatted = "\n".join(f"- ``{p}``" for p in matches)
-        await interaction.response.send_message(
-            f"Filters matching ``{nation}``:\n{formatted}", ephemeral=True
-        )
+        await interaction.response.send_message(f"Filters matching ``{nation}``:\n{formatted}", ephemeral=True)
 
     @commands.command(name="disable", description="Disable a recruitment channel by ID")
     @commands.check(is_global_admin_text)
@@ -460,9 +418,7 @@ class RecruitmentCog(commands.Cog):
             except discord.NotFound:
                 pass
             except discord.HTTPException as e:
-                await ctx.reply(
-                    f"Deregistered channel {channel_id}, but failed to delete the status embed: {e}"
-                )
+                await ctx.reply(f"Deregistered channel {channel_id}, but failed to delete the status embed: {e}")
                 return
 
         await ctx.reply(f"Deregistered channel {channel_id}.")

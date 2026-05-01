@@ -28,5 +28,6 @@ class Base(commands.Cog):
         await ctx.reply("Goodbye!")
         await self.bot.close()
 
+
 async def setup(bot: Bot):
     await bot.add_cog(Base(bot))
