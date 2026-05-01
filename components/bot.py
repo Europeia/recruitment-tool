@@ -64,8 +64,7 @@ class Bot(commands.Bot):
 
         super().__init__(command_prefix="!", intents=intents)
 
-        self._headers = {
-            "User-Agent": f"Aperta Recruitment Bot, developed by nation=upc, run by {configInstance.data.operator}"}
+        self._headers = {"User-Agent": f"Aperta Recruitment Bot, developed by nation=upc, run by {configInstance.data.operator}"}
         self._session = session
         self._pool = pool
         self._ratelimit = None
@@ -110,19 +109,13 @@ class Bot(commands.Bot):
         """Disable a recruitment channel and return its status embed message id, or None if not actively registered."""
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;",
-                    (channel_id,),
-                )
+                await cur.execute("SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", (channel_id,))
                 row = await cur.fetchone()
 
                 if row is None:
                     return None
 
-                await cur.execute(
-                    "UPDATE recruitment_channels SET disabled = TRUE WHERE channelId = %s;",
-                    (channel_id,),
-                )
+                await cur.execute("UPDATE recruitment_channels SET disabled = TRUE WHERE channelId = %s;", (channel_id,))
 
                 return row[0]
 
@@ -304,8 +297,7 @@ class Bot(commands.Bot):
         await self.update_telegram_count(recruiter, len(nations))
 
         embed = discord.Embed(title="Recruit", color=int("2d0001", 16))
-        embed.add_field(name="Nations",
-                        value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
+        embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
         embed.add_field(name="Template", value=f"```{recruiter.template}```", inline=False)
         embed.set_footer(text=f"Initiated by {recruiter.nation} at {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
 
@@ -348,15 +340,11 @@ class Bot(commands.Bot):
 
         embed = discord.Embed(title="Recruitment Queue")
         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
-        embed.add_field(name="Last Updated",
-                        value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
+        embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
 
         async with self._pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;",
-                    channel_id,
-                )
+                await cur.execute("SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", channel_id)
 
                 message_id = (await cur.fetchone())[0]
 

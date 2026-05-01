@@ -19,8 +19,7 @@ from components.errors import EmptyQueue
 
 logger = logging.getLogger("main")
 
-PUPPET_REGEX = re.compile(
-    r"^\d+_[a-z0-9_]+|[a-z0-9_]+_\d+$|^[a-z0-9_]+_m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
+PUPPET_REGEX = re.compile(r"^\d+_[a-z0-9_]+|[a-z0-9_]+_\d+$|^[a-z0-9_]+_m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
 FOUNDING_REGEX = re.compile("^@@([a-z0-9_]+)@@ was founded in %%([a-z0-9_]+)%%.?$")
 MOVE_REGEX = re.compile("^@@([a-z0-9_]+)@@ relocated from %%([a-z0-9_]+)%% to %%([a-z0-9_]+)%%.?$")
 
@@ -111,8 +110,7 @@ class Queue:
     def prune(self):
         current_time = datetime.now(timezone.utc)
 
-        self._nations = [nation for nation in self._nations if
-                         (current_time - nation.founding_time).total_seconds() < 3600]
+        self._nations = [nation for nation in self._nations if (current_time - nation.founding_time).total_seconds() < 3600]
 
     def purge(self):
         self._nations = []
@@ -218,12 +216,7 @@ class QueueManager(AbstractAsyncContextManager):
         with self._queue_lock:
             state = {
                 str(channel_id): [
-                    {
-                        "name": n.name,
-                        "region": n.region,
-                        "founding_time": n.founding_time.isoformat(),
-                    }
-                    for n in queue.snapshot()
+                    {"name": n.name, "region": n.region, "founding_time": n.founding_time.isoformat()} for n in queue.snapshot()
                 ]
                 for channel_id, queue in self._queues.items()
             }
