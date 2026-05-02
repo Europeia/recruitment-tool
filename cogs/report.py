@@ -6,6 +6,7 @@ from discord.ext import commands
 from discord.ui import Modal
 
 from components.bot import Bot
+from models.db import Streak
 
 logger = logging.getLogger("main")
 
@@ -51,10 +52,10 @@ class ReportModal(Modal, title="Recruitment Report"):
         report_type = self.r_type.component.value
 
         if report_type == "streaks":
-            result = await self.bot.get_streaks(start_time, end_time, interaction.channel_id)
+            result = await self.bot.db.get_streaks(start_time, end_time, interaction.channel_id)
 
             if result:
-                resp = "\n".join([f"{nation}: {days} day{'s' if days != 1 else ''}" for nation, days in result])
+                resp = "\n".join([f"{streak.nation}: {streak.streak} day{'s' if streak.streak != 1 else ''}" for streak in result])
             else:
                 resp = "No active streaks"
             await interaction.response.send_message(
