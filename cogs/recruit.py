@@ -143,7 +143,7 @@ class RegisterRecruiterModal(Modal, title="Registration"):
         try:
             founded_time = datetime.fromtimestamp(
                 int(
-                    (await self.bot.request(f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=foundedtime"))
+                    (await self.bot.ns.get(nation=nation, q="foundedtime"))
                     .find("FOUNDEDTIME")
                     .text
                 )
