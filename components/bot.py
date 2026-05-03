@@ -46,9 +46,7 @@ class Bot(commands.Bot):
     async def setup_hook(self):
         import cogs.recruit
 
-        recruitment_views = await self._db.fetch_all(
-            "SELECT channelId, messageId FROM recruitment_channels WHERE disabled = FALSE;"
-        )
+        recruitment_views = await self._db.fetch_all("SELECT channelId, messageId FROM recruitment_channels WHERE disabled = FALSE;")
 
         for _, message_id in recruitment_views:
             self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
@@ -72,17 +70,13 @@ class Bot(commands.Bot):
     async def deregister_recruitment_channel(self, channel_id: int) -> Optional[int]:
         """Disable a recruitment channel and return its status embed message id, or None if not actively registered."""
         row = await self._db.fetch_one(
-            "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;",
-            (channel_id,),
+            "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", (channel_id,)
         )
 
         if row is None:
             return None
 
-        await self._db.execute(
-            "UPDATE recruitment_channels SET disabled = TRUE WHERE channelId = %s;",
-            (channel_id,),
-        )
+        await self._db.execute("UPDATE recruitment_channels SET disabled = TRUE WHERE channelId = %s;", (channel_id,))
 
         return row[0]
 
@@ -151,25 +145,6 @@ class Bot(commands.Bot):
             (recruiter.id, nation_count, recruiter.channel_id),
         )
 
-    async def get_telegrams(self, start_time: datetime, end_time: datetime, channel_id: int):
-        if start_time > end_time:
-            raise Exception("Start time must be before end time")
-
-        return await self._db.fetch_all(
-            """SELECT users.nation,
-                      SUM(nationCount) AS 'tgcount', COUNT(DISTINCT DATE (telegrams.timestamp)) AS 'days'
-               FROM telegrams
-                        JOIN users ON users.id = telegrams.recruiterId
-                        JOIN recruitment_channels ON recruitment_channels.id = telegrams.channelId
-               WHERE telegrams.timestamp BETWEEN %s AND %s
-                 AND recruitment_channels.channelId = %s
-               GROUP BY users.id
-               ORDER BY tgcount DESC
-               LIMIT 40;
-            """,
-            (start_time, end_time, channel_id),
-        )
-
     async def create_recruitment_response(self, user: discord.User, channel_id: int):
         from cogs.recruit import TelegramView
 
@@ -234,8 +209,7 @@ class Bot(commands.Bot):
         embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
 
         row = await self._db.fetch_one(
-            "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;",
-            (channel_id,),
+            "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", (channel_id,)
         )
 
         if row is None:

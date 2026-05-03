@@ -64,12 +64,12 @@ class ReportModal(Modal, title="Recruitment Report"):
             )
             return
 
-        result = await self.bot.get_telegrams(start_time, end_time, interaction.channel_id)
+        result = await self.bot.db.get_telegrams(start_time, end_time, interaction.channel_id)
 
         if report_type == "count_only":
-            resp = "\n".join([f"{nation}: {count}" for nation, count, _days in result])
+            resp = "\n".join([f"{recruiter.nation}: {recruiter.count}" for recruiter in result])
         else:
-            resp = "\n".join([f"{nation}: {count} ({days}d)" for nation, count, days in result])
+            resp = "\n".join([f"{recruiter.nation}: {recruiter.count} ({recruiter.days}d)" for recruiter in result])
         await interaction.response.send_message(
             f"Recruitment Report: <t:{int(start_time.timestamp())}:f> to <t:{int(end_time.timestamp())}:f>\n```{resp}```", ephemeral=True
         )
