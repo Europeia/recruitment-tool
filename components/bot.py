@@ -120,31 +120,6 @@ class Bot(commands.Bot):
             founded_time.replace(tzinfo=timezone.utc),
         )
 
-    async def set_next_recruitment_at(self, recruiter: Recruiter, nation_count: int) -> int | float:
-        cooldown = recruiter.get_cooldown(nation_count)
-
-        next_recruitment_timestamp = datetime.now(timezone.utc) + timedelta(seconds=cooldown)
-
-        await self._db.execute(
-            """UPDATE users
-               SET allowRecruitmentAt = %s
-               WHERE id = %s;
-            """,
-            (next_recruitment_timestamp, recruiter.id),
-        )
-
-        return cooldown
-
-    async def update_telegram_count(self, recruiter: Recruiter, nation_count: int):
-        await self._db.execute(
-            """INSERT INTO telegrams (recruiterId, nationCount, channelId)
-               VALUES (%s, %s, (SELECT id
-                                FROM recruitment_channels
-                                WHERE channelId = %s));
-            """,
-            (recruiter.id, nation_count, recruiter.channel_id),
-        )
-
     async def create_recruitment_response(self, user: discord.User, channel_id: int):
         from cogs.recruit import TelegramView
 
@@ -158,9 +133,9 @@ class Bot(commands.Bot):
 
         nations = self._queue_list.get_nations(user, channel_id)
 
-        cooldown = await self.set_next_recruitment_at(recruiter, len(nations))
+        cooldown = await self._db.set_next_recruitment_at(recruiter, len(nations))
 
-        await self.update_telegram_count(recruiter, len(nations))
+        await self._db.update_telegram_count(recruiter, len(nations))
 
         embed = discord.Embed(title="Recruit", color=int("2d0001", 16))
         embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
