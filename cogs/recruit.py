@@ -67,7 +67,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
             await self.bot.db.register_recruitment_channel(server_id, channel_id, recruitment_message.id)
             await self.bot.db.add_to_channel_whitelist(channel_id, region)
 
-            await self.bot.queue_manager.add_channel(channel_id, [region])
+            self.bot.queue_manager.add_channel(channel_id, [region])
         except Exception as e:
             await recruitment_message.delete()
             raise e
