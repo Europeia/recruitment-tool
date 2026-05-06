@@ -15,6 +15,7 @@ import httpx
 from httpx_sse import ServerSentEvent, connect_sse
 from stamina import retry
 
+from components.database import Database
 from components.errors import EmptyQueue
 
 logger = logging.getLogger("main")
@@ -155,6 +156,7 @@ class QueueManager(AbstractAsyncContextManager):
 
     def __init__(self, pool: aiomysql.Pool):
         self._whitelist = []
+        self._db = Database(pool)
         self._pool = pool
         self._queues = {}
         self._queue_lock = threading.Lock()
@@ -398,6 +400,10 @@ class QueueManager(AbstractAsyncContextManager):
     def channel(self, channel_id: int) -> Queue:
         with self._queue_lock:
             return self._queues[channel_id]
+
+    def has_channel(self, channel_id: int) -> bool:
+        with self._queue_lock:
+            return channel_id in self._queues
 
     def add_channel(self, channel_id: int, regions: List[str]):
         with self._queue_lock:
