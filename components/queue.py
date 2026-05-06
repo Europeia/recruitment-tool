@@ -345,7 +345,7 @@ class QueueManager(AbstractAsyncContextManager):
         self._get_channel_queue(channel_id).whitelist.remove(region)
 
     def list_whitelist(self, channel_id: int):
-        return (self._whitelist, self._get_channel_queue(channel_id).whitelist)
+        return self._whitelist, self._get_channel_queue(channel_id).whitelist
 
     async def add_global_filter(self, pattern: str):
         try:
