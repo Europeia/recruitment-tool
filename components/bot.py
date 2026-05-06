@@ -57,29 +57,6 @@ class Bot(commands.Bot):
             await self.load_extension(f"cogs.{cog}")
             print(f"Loaded cog: {cog}")
 
-    async def register_recruitment_channel(self, server_id: int, channel_id: int, message_id: int):
-        try:
-            await self._db.execute(
-                "INSERT INTO recruitment_channels (serverId, channelId, messageId) VALUES (%s, %s, %s);",
-                (server_id, channel_id, message_id),
-            )
-        except aiomysql.IntegrityError:
-            # TODO make this into a custom exception!
-            raise Exception("Channel already registered")
-
-    async def deregister_recruitment_channel(self, channel_id: int) -> Optional[int]:
-        """Disable a recruitment channel and return its status embed message id, or None if not actively registered."""
-        row = await self._db.fetch_one(
-            "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", (channel_id,)
-        )
-
-        if row is None:
-            return None
-
-        await self._db.execute("UPDATE recruitment_channels SET disabled = TRUE WHERE channelId = %s;", (channel_id,))
-
-        return row[0]
-
     async def get_recruiter_id(self, user: discord.User, channel_id: int) -> Optional[int]:
         row = await self._db.fetch_one(
             """SELECT users.id
