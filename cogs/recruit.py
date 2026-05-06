@@ -46,7 +46,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         if not self.bot.queue_manager.has_channel(channel_id):
             channel_whitelist = await self.bot.db.get_channel_whitelist(channel_id)
 
-            await self.bot.queue_manager.add_channel(channel_id, channel_whitelist)
+            self.bot.queue_manager.add_channel(channel_id, channel_whitelist)
 
         # try to use old recruitment message
         message = await self._retrieve_recruitment_message(channel_id)
