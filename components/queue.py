@@ -10,7 +10,6 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Self
 
 import aiomysql
-import discord
 import httpx
 from httpx_sse import ServerSentEvent, connect_sse
 from stamina import retry
