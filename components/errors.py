@@ -1,13 +1,10 @@
 import discord
-
 from discord import app_commands
 from discord.ext import commands
 
 
 class EmptyQueue(commands.CommandError):
-    def __init__(self, user: discord.User):
-        self.user = user
-
+    def __init__(self):
         super().__init__(message=f"queue empty")
 
 

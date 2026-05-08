@@ -86,11 +86,11 @@ class Queue:
     def get_nation_count(self) -> int:
         return len(self._nations)
 
-    def get_nations(self, user: discord.User, return_count: int = 8) -> List[str]:
+    def get_nations(self, return_count: int = 8) -> List[str]:
         self.prune()
 
         if self.get_nation_count() == 0:
-            raise EmptyQueue(user)
+            raise EmptyQueue()
 
         resp = [nation.name for nation in self._nations][:return_count]
 
@@ -409,9 +409,9 @@ class QueueManager(AbstractAsyncContextManager):
         with self._queue_lock:
             return self._queues.pop(channel_id, None) is not None
 
-    def get_nations(self, user: discord.User, channel_id: int, return_count: int = 8) -> List[str]:
+    def get_nations(self, channel_id: int, return_count: int = 8) -> List[str]:
         with self._queue_lock:
-            return self._queues[channel_id].get_nations(user, return_count)
+            return self._queues[channel_id].get_nations(return_count)
 
     def get_nation_count(self, channel_id: int) -> int:
         with self._queue_lock:
