@@ -300,10 +300,7 @@ class QueueManager(AbstractAsyncContextManager):
             self._whitelist.remove(region)
 
     def _get_channel_queue(self, channel_id: int) -> Queue:
-        try:
-            return self._queues[channel_id]
-        except KeyError:
-            raise app_commands.AppCommandError("This channel is not registered as a recruitment channel.")
+        return self._queues[channel_id]
 
     async def add_to_channel_whitelist(self, channel_id: int, region: str):
         region = region.strip().lower().replace(" ", "_")
