@@ -108,7 +108,7 @@ class Bot(commands.Bot):
             reset_in = (recruiter.next_recruitment_at - current_time).total_seconds()
             raise LastRecruitmentTooRecent(user, reset_in)
 
-        nations = self._queue_list.get_nations(user, channel_id)
+        nations = self._queue_list.get_nations(channel_id)
 
         cooldown = await self._db.set_next_recruitment_at(recruiter, len(nations))
 

@@ -36,7 +36,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
 
         try:
             message = await channel.fetch_message(channel_id)
-        except discord.NotFound, discord.Forbidden, discord.HTTPException:
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
             return None
 
         return message
