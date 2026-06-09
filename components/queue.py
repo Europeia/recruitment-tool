@@ -10,11 +10,11 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Self
 
 import aiomysql
-import discord
 import httpx
 from httpx_sse import ServerSentEvent, connect_sse
 from stamina import retry
 
+from components.database import Database
 from components.errors import EmptyQueue
 
 logger = logging.getLogger("main")
@@ -86,11 +86,11 @@ class Queue:
     def get_nation_count(self) -> int:
         return len(self._nations)
 
-    def get_nations(self, user: discord.User, return_count: int = 8) -> List[str]:
+    def get_nations(self, return_count: int = 8) -> List[str]:
         self.prune()
 
         if self.get_nation_count() == 0:
-            raise EmptyQueue(user)
+            raise EmptyQueue()
 
         resp = [nation.name for nation in self._nations][:return_count]
 
@@ -155,6 +155,7 @@ class QueueManager(AbstractAsyncContextManager):
 
     def __init__(self, pool: aiomysql.Pool):
         self._whitelist = []
+        self._db = Database(pool)
         self._pool = pool
         self._queues = {}
         self._queue_lock = threading.Lock()
@@ -298,10 +299,7 @@ class QueueManager(AbstractAsyncContextManager):
             self._whitelist.remove(region)
 
     def _get_channel_queue(self, channel_id: int) -> Queue:
-        try:
-            return self._queues[channel_id]
-        except KeyError:
-            raise app_commands.AppCommandError("This channel is not registered as a recruitment channel.")
+        return self._queues[channel_id]
 
     async def add_to_channel_whitelist(self, channel_id: int, region: str):
         region = region.strip().lower().replace(" ", "_")
@@ -343,7 +341,7 @@ class QueueManager(AbstractAsyncContextManager):
         self._get_channel_queue(channel_id).whitelist.remove(region)
 
     def list_whitelist(self, channel_id: int):
-        return (self._whitelist, self._get_channel_queue(channel_id).whitelist)
+        return self._whitelist, self._get_channel_queue(channel_id).whitelist
 
     async def add_global_filter(self, pattern: str):
         try:
@@ -399,6 +397,10 @@ class QueueManager(AbstractAsyncContextManager):
         with self._queue_lock:
             return self._queues[channel_id]
 
+    def has_channel(self, channel_id: int) -> bool:
+        with self._queue_lock:
+            return channel_id in self._queues
+
     def add_channel(self, channel_id: int, regions: List[str]):
         with self._queue_lock:
             self._queues[channel_id] = Queue(whitelist=regions)
@@ -407,9 +409,9 @@ class QueueManager(AbstractAsyncContextManager):
         with self._queue_lock:
             return self._queues.pop(channel_id, None) is not None
 
-    def get_nations(self, user: discord.User, channel_id: int, return_count: int = 8) -> List[str]:
+    def get_nations(self, channel_id: int, return_count: int = 8) -> List[str]:
         with self._queue_lock:
-            return self._queues[channel_id].get_nations(user, return_count)
+            return self._queues[channel_id].get_nations(return_count)
 
     def get_nation_count(self, channel_id: int) -> int:
         with self._queue_lock:

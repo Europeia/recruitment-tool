@@ -14,6 +14,7 @@ except ConfigError as e:
     sys.exit(1)
 
 from components.bot import Bot
+from components.ns_client import NSClient
 from components.queue import QueueManager
 
 logger = logging.getLogger("main")
@@ -35,8 +36,9 @@ async def main():
         )
 
         try:
+            ns = NSClient(session)
             async with QueueManager(pool) as ql:
-                async with Bot(session, ql, pool) as bot:
+                async with Bot(ns, ql, pool) as bot:
                     if sys.platform != "win32":
                         loop = asyncio.get_running_loop()
 
