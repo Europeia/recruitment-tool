@@ -29,7 +29,7 @@ logger.setLevel(logging.DEBUG)
 
 async def main():
     async with aiohttp.ClientSession() as session:
-        pool = await aiomysql.create_pool(
+        async with aiomysql.create_pool(
             host=configInstance.data.db_host,
             port=configInstance.data.db_port,
             user=configInstance.data.db_user,
@@ -37,9 +37,7 @@ async def main():
             db=configInstance.data.db_name,
             autocommit=True,
             init_command="SET SESSION time_zone='+00:00'",
-        )
-
-        try:
+        ) as pool:
             ns = NSClient(session)
             async with QueueManager(pool) as ql:
                 async with Bot(ns, ql, pool) as bot:
