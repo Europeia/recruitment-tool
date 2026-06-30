@@ -259,6 +259,15 @@ wheels = [
 ]
 
 [[package]]
+name = "filelock"
+version = "3.29.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/dc/be6cbe99670cd6e4ad387123647cb08e0c32975e223f82551e914c5568a6/filelock-3.29.4.tar.gz", hash = "sha256:10cdb3656fc44541cdf30652a93fb10ec6b05325620eb316bd26893e4201538a", size = 63028, upload-time = "2026-06-13T16:12:00.744Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/37/a065dc3bd6e49423a6532c642ca7378d3f467b1ef44c2800c937af7f9739/filelock-3.29.4-py3-none-any.whl", hash = "sha256:dac1648087d5115554850d113e7dd8c83ab2d38e3435dde2d4f163847e57b767", size = 42757, upload-time = "2026-06-13T16:11:59.582Z" },
+]
+
+[[package]]
 name = "frozenlist"
 version = "1.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -486,6 +495,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "dataclasses-json" },
     { name = "discord-py" },
+    { name = "filelock" },
     { name = "frozenlist" },
     { name = "httpx" },
     { name = "httpx-sse" },
@@ -529,6 +539,7 @@ requires-dist = [
     { name = "cryptography", specifier = "==44.0.0" },
     { name = "dataclasses-json", specifier = "==0.5.7" },
     { name = "discord-py", specifier = ">=2.7.0" },
+    { name = "filelock", specifier = ">=3.29.4" },
     { name = "frozenlist", specifier = "==1.4.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "httpx-sse", specifier = ">=0.4.3" },

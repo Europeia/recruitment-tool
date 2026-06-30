@@ -1,9 +1,13 @@
-import aiohttp
-import aiomysql
 import asyncio
 import logging
 import signal
 import sys
+import tempfile
+from pathlib import Path
+
+import aiohttp
+import aiomysql
+from filelock import FileLock, Timeout
 
 from components.config.errors import ConfigError
 
@@ -53,7 +57,12 @@ async def main():
 
 
 if __name__ == "__main__":
+    lock_path = Path(tempfile.gettempdir()) / "asperta.lock"
+
+    lock = FileLock(lock_path, timeout=0)
+
     try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Shutdown complete.")
+        with lock:
+            asyncio.run(main())
+    except Timeout:
+        logger.error("lock held; shutting down")
