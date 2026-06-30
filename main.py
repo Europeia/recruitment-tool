@@ -50,9 +50,6 @@ async def main():
                             loop.add_signal_handler(sig, request_shutdown, sig.name)
 
                     await bot.start(configInstance.data.bot_token)
-        finally:
-            pool.close()
-            await pool.wait_closed()
 
 
 if __name__ == "__main__":
