@@ -18,8 +18,8 @@ from components.ns_client import NSClient
 from components.queue import QueueManager
 
 logger = logging.getLogger("main")
-hndlr = logging.StreamHandler()
-logger.addHandler(hndlr)
+handler = logging.StreamHandler()
+logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
