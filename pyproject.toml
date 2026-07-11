@@ -21,6 +21,7 @@ dependencies = [
     "cryptography==44.0.0",
     "dataclasses-json==0.5.7",
     "discord-py>=2.7.0",
+    "filelock>=3.29.4",
     "frozenlist==1.4.1",
     "httpx>=0.28.1",
     "httpx-sse>=0.4.3",

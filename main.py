@@ -1,9 +1,13 @@
-import aiohttp
-import aiomysql
 import asyncio
 import logging
 import signal
 import sys
+import tempfile
+from pathlib import Path
+
+import aiohttp
+import aiomysql
+from filelock import FileLock, Timeout
 
 from components.config.errors import ConfigError
 
@@ -18,14 +22,14 @@ from components.ns_client import NSClient
 from components.queue import QueueManager
 
 logger = logging.getLogger("main")
-hndlr = logging.StreamHandler()
-logger.addHandler(hndlr)
+handler = logging.StreamHandler()
+logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
 async def main():
     async with aiohttp.ClientSession() as session:
-        pool = await aiomysql.create_pool(
+        async with aiomysql.create_pool(
             host=configInstance.data.db_host,
             port=configInstance.data.db_port,
             user=configInstance.data.db_user,
@@ -33,9 +37,7 @@ async def main():
             db=configInstance.data.db_name,
             autocommit=True,
             init_command="SET SESSION time_zone='+00:00'",
-        )
-
-        try:
+        ) as pool:
             ns = NSClient(session)
             async with QueueManager(pool) as ql:
                 async with Bot(ns, ql, pool) as bot:
@@ -50,13 +52,15 @@ async def main():
                             loop.add_signal_handler(sig, request_shutdown, sig.name)
 
                     await bot.start(configInstance.data.bot_token)
-        finally:
-            pool.close()
-            await pool.wait_closed()
 
 
 if __name__ == "__main__":
+    lock_path = Path(tempfile.gettempdir()) / "asperta.lock"
+
+    lock = FileLock(lock_path, timeout=0)
+
     try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Shutdown complete.")
+        with lock:
+            asyncio.run(main())
+    except Timeout:
+        logger.error("lock held; shutting down")
