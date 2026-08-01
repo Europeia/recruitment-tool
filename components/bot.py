@@ -11,6 +11,7 @@ from components.errors import LastRecruitmentTooRecent, NotRegistered
 from components.ns_client import NSClient
 from components.queue import QueueManager
 from components.recruiter import Recruiter
+from components.session import SessionManager
 
 logger = logging.getLogger("main")
 
@@ -33,6 +34,10 @@ class Bot(commands.Bot):
         """The recruitment queue"""
         return self._queue_list
 
+    @property
+    def session_manager(self) -> SessionManager:
+        return self._session_manager
+
     def __init__(self, ns: NSClient, ql: QueueManager, pool: aiomysql.Pool):
         intents = discord.Intents.default()
 
@@ -42,6 +47,7 @@ class Bot(commands.Bot):
         self._db = Database(pool)
         self._ns = ns
         self._queue_list = ql
+        self._session_manager = SessionManager()
 
     async def setup_hook(self):
         import cogs.recruit
