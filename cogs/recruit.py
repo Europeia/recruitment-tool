@@ -10,6 +10,7 @@ from cogs.report import ReportModal
 from components.bot import Bot
 from components.checks import is_global_admin, is_global_admin_text
 from components.errors import NationNotFound, WhitelistError
+from components.session import Session
 
 logger = logging.getLogger("main")
 
@@ -218,7 +219,20 @@ class StartSessionModal(Modal, title="Start"):
         assert isinstance(self.cooldown.component, discord.ui.Select)
         assert isinstance(self.shutdown_after.component, discord.ui.Select)
 
-        await interaction.response.send_message("Session started!", ephemeral=True)
+        batch_size = int(self.batch_size.component.values[0])
+        cooldown = int(self.cooldown.component.values[0])
+        shutdown_after = int(self.shutdown_after.component.values[0])
+
+        recruiter = await self._bot.get_recruiter(interaction.user, interaction.channel_id)
+
+        if not self._bot.session_manager.get_session_by_id(interaction.user.id):
+            session = Session(recruiter, batch_size, cooldown, shutdown_after)
+
+            self._bot.session_manager.add_session(session)
+
+            await interaction.response.send_message("Session started!", ephemeral=True)
+        else:
+            await interaction.response.send_message("Session already started!", ephemeral=True)
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
         logger.error(error)
