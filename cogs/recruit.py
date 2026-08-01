@@ -36,7 +36,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
 
         try:
             message = await channel.fetch_message(channel_id)
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+        except discord.NotFound, discord.Forbidden, discord.HTTPException:
             return None
 
         return message
@@ -161,6 +161,70 @@ class RegisterRecruiterModal(Modal, title="Registration"):
         await interation.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
 
+class StartSessionModal(Modal, title="Start"):
+    def __init__(self, bot: Bot):
+        super().__init__(timeout=None)
+        self._bot = bot
+
+    batch_size = discord.ui.Label(
+        text="Batch Size",
+        description="The minimum number of nations in a batch.",
+        component=discord.ui.Select(
+            options=[
+                discord.SelectOption(label="1", value="1"),
+                discord.SelectOption(label="2", value="2"),
+                discord.SelectOption(label="3", value="3"),
+                discord.SelectOption(label="4", value="4"),
+                discord.SelectOption(label="5", value="5"),
+                discord.SelectOption(label="6", value="6"),
+                discord.SelectOption(label="7", value="7"),
+                discord.SelectOption(label="8", value="8"),
+            ]
+        ),
+    )
+
+    cooldown = discord.ui.Label(
+        text="Cooldown",
+        description="The minimum time (excluding recruitment cooldown) between session pings.",
+        component=discord.ui.Select(
+            options=[
+                discord.SelectOption(label="No cooldown", value="0"),
+                discord.SelectOption(label="One Minute", value="60"),
+                discord.SelectOption(label="Two Minutes", value="120"),
+                discord.SelectOption(label="Three Minutes", value="180"),
+                discord.SelectOption(label="Four Minutes", value="240"),
+                discord.SelectOption(label="Five Minutes", value="360"),
+            ]
+        ),
+    )
+
+    shutdown_after = discord.ui.Label(
+        text="Shutdown After",
+        description="How long an inactive session should continue.",
+        component=discord.ui.Select(
+            options=[
+                discord.SelectOption(label="10 Minutes", value="10"),
+                discord.SelectOption(label="20 Minutes", value="20"),
+                discord.SelectOption(label="30 Minutes", value="30"),
+                discord.SelectOption(label="40 Minutes", value="40"),
+                discord.SelectOption(label="50 Minutes", value="50"),
+                discord.SelectOption(label="60 Minutes", value="60"),
+            ]
+        ),
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        assert isinstance(self.batch_size.component, discord.ui.Select)
+        assert isinstance(self.cooldown.component, discord.ui.Select)
+        assert isinstance(self.shutdown_after.component, discord.ui.Select)
+
+        await interaction.response.send_message("Session started!", ephemeral=True)
+
+    async def on_error(self, interation: discord.Interaction, error: Exception):
+        logger.error(error)
+        await interation.response.send_message(f"An error occurred: {error}", ephemeral=True)
+
+
 class RecruitView(View):
     def __init__(self, bot: Bot):
         super().__init__(timeout=None)
@@ -171,6 +235,10 @@ class RecruitView(View):
         embed, view, delete_after = await self.bot.create_recruitment_response(interaction.user, interaction.channel_id)
         view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
         await self.bot.update_status_embed(interaction.channel_id)
+
+    @discord.ui.button(label="Session", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:session")
+    async def session(self, interaction: discord.Interaction, _button: discord.ui.button):
+        await interaction.response.send_modal(StartSessionModal(self.bot))
 
     @discord.ui.button(label="Register", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:register")
     async def register(self, interaction: discord.Interaction, _button: discord.ui.button):
