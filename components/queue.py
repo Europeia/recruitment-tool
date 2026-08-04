@@ -444,6 +444,9 @@ class QueueManager(AbstractAsyncContextManager):
                 queue.handle_move(event.nation, event.moved_to)
 
     def _handle_event(self, ev: ServerSentEvent):
+        if not ev.data:
+            return
+
         event: Event = json.loads(ev.data, object_hook=Event.from_json)
 
         if match := FOUNDING_REGEX.match(event.str):
