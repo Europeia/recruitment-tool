@@ -34,7 +34,10 @@ class Session:
 
 class SessionManager:
     def __init__(self):
-        self._sessions = []
+        self._sessions: list[Session] = []
+
+    def __iter__(self):
+        return iter(self._sessions)
 
     def get_session_by_id(self, discord_id: int) -> Session | None:
         for session in self._sessions:
@@ -59,7 +62,7 @@ class SessionManager:
             if session.recruiter_id == discord_id:
                 self._sessions.remove(session)
 
-            return session
+                return session
 
         return None
 
