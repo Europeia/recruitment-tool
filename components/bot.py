@@ -77,48 +77,36 @@ class Bot(commands.Bot):
         return row[0] if row else None
 
     async def get_recruiter(self, user: discord.User, channel_id: int):
-        row = await self._db.fetch_one(
-            """SELECT users.id, nation, recruitTemplate, allowRecruitmentAt, foundedTime
-               FROM users
-                        JOIN recruitment_channels ON recruitment_channels.id = users.channelId
-               WHERE users.discordId = %s
-                 AND recruitment_channels.channelId = %s
-                 AND recruitment_channels.disabled = FALSE;
-            """,
-            (user.id, channel_id),
-        )
+        recruiter = await self._db.get_recruiter(user.id, channel_id)
 
-        if row is None:
+        if not recruiter:
             raise NotRegistered(user)
 
-        (dbid, nation, template, allow_recruitment_at, founded_time) = row
-
-        return Recruiter(
-            dbid,
-            nation,
-            template,
-            user.id,
-            channel_id,
-            allow_recruitment_at.replace(tzinfo=timezone.utc),
-            founded_time.replace(tzinfo=timezone.utc),
-        )
+        return recruiter
 
     async def create_recruitment_response(self, user: discord.User, channel_id: int):
         from cogs.recruit import TelegramView
 
-        recruiter = await self.get_recruiter(user, channel_id)
+        session = self._session_manager.get_session_by_id(user.id)
+        if session is not None:
+            recruiter = session.recruiter
+        else:
+            recruiter = await self.get_recruiter(user, channel_id)
 
         current_time = datetime.now(timezone.utc)
+        next_recruitment_at = recruiter.next_recruitment_at()
 
-        if recruiter.next_recruitment_at > current_time:
-            reset_in = (recruiter.next_recruitment_at - current_time).total_seconds()
+        if next_recruitment_at and next_recruitment_at >= current_time:
+            reset_in = (next_recruitment_at - current_time).total_seconds()
             raise LastRecruitmentTooRecent(user, reset_in)
 
         nations = self._queue_list.get_nations(channel_id)
+        cooldown = recruiter.get_cooldown(len(nations))
 
-        cooldown = await self._db.set_next_recruitment_at(recruiter, len(nations))
-
-        await self._db.update_telegram_count(recruiter, len(nations))
+        if session is not None:
+            session.last_activity = current_time
+        recruiter.record_recruitment(current_time, len(nations))
+        await self._db.record_recruitment(current_time, recruiter, len(nations))
 
         embed = discord.Embed(title="Recruit", color=int("2d0001", 16))
         embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
