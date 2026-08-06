@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from typing import Any, List, Optional, Sequence, Tuple
 
 import aiomysql
@@ -97,22 +97,43 @@ class Database:
 
         return response
 
-    async def set_next_recruitment_at(self, recruiter: Recruiter, nation_count: int) -> int | float:
-        cooldown = recruiter.get_cooldown(nation_count)
-
-        next_recruitment_timestamp = datetime.now() + timedelta(seconds=cooldown)
-
-        await self._execute(
-            """UPDATE users
-               SET allowRecruitmentAt = %s
-               WHERE id = %s;
+    async def get_recruiter(self, user_id: int, channel_id: int) -> Recruiter | None:
+        row = await self._fetch_one(
+            """SELECT users.id, nation, recruitTemplate, lastRecruitmentAt, foundedTime
+               FROM users
+                        JOIN recruitment_channels ON recruitment_channels.id = users.channelId
+               WHERE users.discordId = %s
+                 AND recruitment_channels.channelId = %s
+                 AND recruitment_channels.disabled = FALSE;
             """,
-            (next_recruitment_timestamp, recruiter.id),
+            (user_id, channel_id),
         )
 
-        return cooldown
+        if not row:
+            return None
 
-    async def update_telegram_count(self, recruiter: Recruiter, nation_count: int):
+        return Recruiter(
+            dbid=row[0],
+            nation=row[1],
+            template=row[2],
+            discord_id=user_id,
+            channel_id=channel_id,
+            last_recruitment_at=row[3].replace(tzinfo=timezone.utc) if row[3] else None,
+            founded_time=row[4].replace(tzinfo=timezone.utc),
+        )
+
+    async def record_recruitment(self, time: datetime, recruiter: Recruiter, nation_count: int) -> None:
+        await self._execute(
+            """UPDATE users
+               SET lastRecruitmentAt = %s
+               WHERE id = %s;
+            """,
+            (time, recruiter.id),
+        )
+
+        await self._update_telegram_count(recruiter, nation_count)
+
+    async def _update_telegram_count(self, recruiter: Recruiter, nation_count: int):
         await self._execute(
             """INSERT INTO telegrams (recruiterId, nationCount, channelId)
                VALUES (%s, %s, (SELECT id
