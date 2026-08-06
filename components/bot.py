@@ -167,6 +167,18 @@ class Bot(commands.Bot):
         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
         embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
 
+        sessions = self._session_manager.get_sessions_by_channel_id(channel_id)
+
+        match l := len(sessions):
+            case _ if l > 5:
+                formatted_sessions = ("\n".join(f"<@{session.recruiter_id}>" for session in sessions[:5])) + "\n..."
+            case _ if l > 0:
+                formatted_sessions = "\n".join(f"<@{session.recruiter_id}>" for session in sessions)
+            case _:
+                formatted_sessions = "None"
+
+        embed.add_field(name="Active Sessions", value=formatted_sessions, inline=False)
+
         row = await self._db.fetch_one(
             "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", (channel_id,)
         )
