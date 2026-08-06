@@ -147,6 +147,19 @@ class Bot(commands.Bot):
 
         return None
 
+    async def resolve_user(self, id: int) -> discord.User | None:
+        user = self.get_user(id)
+
+        if user:
+            return user
+
+        user = await self.fetch_user(id)
+
+        if user:
+            return user
+
+        return None
+
     async def update_status_embed(self, channel_id: int):
         logger.info("updating status embed for channel %d", channel_id)
 
