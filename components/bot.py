@@ -57,7 +57,7 @@ class Bot(commands.Bot):
         for _, message_id in recruitment_views:
             self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
 
-        default_cogs = ["base", "recruit", "report", "error_handler"]
+        default_cogs = ["base", "recruit", "report", "error_handler", "session"]
 
         for cog in default_cogs:
             await self.load_extension(f"cogs.{cog}")
