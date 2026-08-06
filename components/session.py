@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from components.recruiter import Recruiter
 
@@ -10,15 +10,22 @@ class Session:
         self._cooldown = cooldown
         self._shutdown_after = shutdown_after
         self._last_ping: datetime | None = None
+        self._started_at: datetime = datetime.now(timezone.utc)
+        self._last_activity: datetime | None = None
 
     def is_eligible(self) -> bool:
         """whether the nation is eligible for a session ping, based on their `next_recruitment_at` and `cooldown` values"""
+        next_recruitment_at = self._recruiter.next_recruitment_at()
+        current_time = datetime.now(timezone.utc)
+
+        if not next_recruitment_at:
+            # means this user has never recruited, we can short circuit and assume yes
+            return True
+
         if self._last_ping:
-            return datetime.now() > self._recruiter.next_recruitment_at and datetime.now() > self._last_ping + timedelta(
-                seconds=self._cooldown
-            )
+            return current_time > next_recruitment_at and current_time > self._last_ping + timedelta(seconds=self._cooldown)
         else:
-            return datetime.now() > self._recruiter.next_recruitment_at
+            return current_time > next_recruitment_at
 
     def set_last_ping(self, dt: datetime):
         self._last_ping = dt
@@ -30,6 +37,34 @@ class Session:
     @property
     def channel_id(self) -> int:
         return self._recruiter.channel_id
+
+    @property
+    def recruiter(self) -> Recruiter:
+        return self._recruiter
+
+    @property
+    def min_batch_size(self) -> int:
+        return self._min_batch_size
+
+    @property
+    def last_ping(self) -> datetime | None:
+        return self._last_ping
+
+    @property
+    def shutdown_after(self) -> int:
+        return self._shutdown_after
+
+    @property
+    def started_at(self) -> datetime:
+        return self._started_at
+
+    @property
+    def last_activity(self) -> datetime | None:
+        return self._last_activity
+
+    @last_activity.setter
+    def last_activity(self, dt: datetime) -> None:
+        self._last_activity = dt
 
 
 class SessionManager:
