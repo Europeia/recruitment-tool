@@ -225,18 +225,51 @@ class StartSessionModal(Modal, title="Start"):
 
         recruiter = await self._bot.get_recruiter(interaction.user, interaction.channel_id)
 
-        if not self._bot.session_manager.get_session_by_id(interaction.user.id):
+        session = self._bot.session_manager.get_session_by_id(interaction.user.id)
+
+        if session and session.channel_id == interaction.channel_id:
+            new_session = Session(recruiter, batch_size, cooldown, shutdown_after)
+
+            self._bot.session_manager.remove_session(interaction.user.id)
+            self._bot.session_manager.add_session(new_session)
+
+            await interaction.response.send_message("Session updated!", ephemeral=True)
+        elif session and session.channel_id != interaction.channel_id:
+            await interaction.response.send_message("Session active in another recruitment channel!", ephemeral=True)
+
+        if not session:
             session = Session(recruiter, batch_size, cooldown, shutdown_after)
 
             self._bot.session_manager.add_session(session)
 
             await interaction.response.send_message("Session started!", ephemeral=True)
-        else:
-            await interaction.response.send_message("Session already started!", ephemeral=True)
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
         logger.error(error)
         await interation.response.send_message(f"An error occurred: {error}", ephemeral=True)
+
+
+class ModifyOrEndSessionView(View):
+    def __init__(self, bot: Bot):
+        super().__init__(timeout=None)
+        self._bot = bot
+        self.message = None
+
+    @discord.ui.button(label="Modify Session", style=discord.ButtonStyle.blurple)
+    async def modify(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        await interaction.response.send_modal(StartSessionModal(self._bot))
+
+    @discord.ui.button(label="End Session", style=discord.ButtonStyle.danger)
+    async def end(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        await self._disable_buttons()
+        self._bot.session_manager.remove_session(interaction.user.id)
+        await interaction.response.send_message("session ended!", ephemeral=True)
+
+    async def _disable_buttons(self):
+        self.modify.disabled = True
+        self.end.disabled = True
+
+        await self.message.edit(view=self)
 
 
 class RecruitView(View):
@@ -252,6 +285,15 @@ class RecruitView(View):
 
     @discord.ui.button(label="Session", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:session")
     async def session(self, interaction: discord.Interaction, _button: discord.ui.button):
+        if self.bot.session_manager.get_session_by_id(interaction.user.id):
+            view = ModifyOrEndSessionView(self.bot)
+
+            view.message = (
+                await interaction.response.send_message("Would you like to modify or end your current session?", view=view, ephemeral=True)
+            ).resource
+
+            return
+
         await interaction.response.send_modal(StartSessionModal(self.bot))
 
     @discord.ui.button(label="Register", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:register")
