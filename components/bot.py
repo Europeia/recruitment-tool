@@ -11,6 +11,7 @@ from components.errors import LastRecruitmentTooRecent, NotRegistered
 from components.ns_client import NSClient
 from components.queue import QueueManager
 from components.recruiter import Recruiter
+from components.session import SessionManager
 
 logger = logging.getLogger("main")
 
@@ -33,6 +34,10 @@ class Bot(commands.Bot):
         """The recruitment queue"""
         return self._queue_list
 
+    @property
+    def session_manager(self) -> SessionManager:
+        return self._session_manager
+
     def __init__(self, ns: NSClient, ql: QueueManager, pool: aiomysql.Pool):
         intents = discord.Intents.default()
 
@@ -42,6 +47,7 @@ class Bot(commands.Bot):
         self._db = Database(pool)
         self._ns = ns
         self._queue_list = ql
+        self._session_manager = SessionManager()
 
     async def setup_hook(self):
         import cogs.recruit
@@ -51,7 +57,7 @@ class Bot(commands.Bot):
         for _, message_id in recruitment_views:
             self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
 
-        default_cogs = ["base", "recruit", "report", "error_handler"]
+        default_cogs = ["base", "recruit", "report", "error_handler", "session"]
 
         for cog in default_cogs:
             await self.load_extension(f"cogs.{cog}")
@@ -71,48 +77,36 @@ class Bot(commands.Bot):
         return row[0] if row else None
 
     async def get_recruiter(self, user: discord.User, channel_id: int):
-        row = await self._db.fetch_one(
-            """SELECT users.id, nation, recruitTemplate, allowRecruitmentAt, foundedTime
-               FROM users
-                        JOIN recruitment_channels ON recruitment_channels.id = users.channelId
-               WHERE users.discordId = %s
-                 AND recruitment_channels.channelId = %s
-                 AND recruitment_channels.disabled = FALSE;
-            """,
-            (user.id, channel_id),
-        )
+        recruiter = await self._db.get_recruiter(user.id, channel_id)
 
-        if row is None:
+        if not recruiter:
             raise NotRegistered(user)
 
-        (dbid, nation, template, allow_recruitment_at, founded_time) = row
-
-        return Recruiter(
-            dbid,
-            nation,
-            template,
-            user.id,
-            channel_id,
-            allow_recruitment_at.replace(tzinfo=timezone.utc),
-            founded_time.replace(tzinfo=timezone.utc),
-        )
+        return recruiter
 
     async def create_recruitment_response(self, user: discord.User, channel_id: int):
         from cogs.recruit import TelegramView
 
-        recruiter = await self.get_recruiter(user, channel_id)
+        session = self._session_manager.get_session_by_id(user.id)
+        if session is not None:
+            recruiter = session.recruiter
+        else:
+            recruiter = await self.get_recruiter(user, channel_id)
 
         current_time = datetime.now(timezone.utc)
+        next_recruitment_at = recruiter.next_recruitment_at()
 
-        if recruiter.next_recruitment_at > current_time:
-            reset_in = (recruiter.next_recruitment_at - current_time).total_seconds()
+        if next_recruitment_at and next_recruitment_at >= current_time:
+            reset_in = (next_recruitment_at - current_time).total_seconds()
             raise LastRecruitmentTooRecent(user, reset_in)
 
         nations = self._queue_list.get_nations(channel_id)
+        cooldown = recruiter.get_cooldown(len(nations))
 
-        cooldown = await self._db.set_next_recruitment_at(recruiter, len(nations))
-
-        await self._db.update_telegram_count(recruiter, len(nations))
+        if session is not None:
+            session.last_activity = current_time
+        recruiter.record_recruitment(current_time, len(nations))
+        await self._db.record_recruitment(current_time, recruiter, len(nations))
 
         embed = discord.Embed(title="Recruit", color=int("2d0001", 16))
         embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
@@ -153,12 +147,37 @@ class Bot(commands.Bot):
 
         return None
 
+    async def resolve_user(self, id: int) -> discord.User | None:
+        user = self.get_user(id)
+
+        if user:
+            return user
+
+        user = await self.fetch_user(id)
+
+        if user:
+            return user
+
+        return None
+
     async def update_status_embed(self, channel_id: int):
         logger.info("updating status embed for channel %d", channel_id)
 
         embed = discord.Embed(title="Recruitment Queue")
         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
         embed.add_field(name="Last Updated", value=f"<t:{int(self._queue_list.channel(channel_id).last_updated.timestamp())}:R>")
+
+        sessions = self._session_manager.get_sessions_by_channel_id(channel_id)
+
+        match l := len(sessions):
+            case _ if l > 5:
+                formatted_sessions = ("\n".join(f"<@{session.recruiter_id}>" for session in sessions[:5])) + "\n..."
+            case _ if l > 0:
+                formatted_sessions = "\n".join(f"<@{session.recruiter_id}>" for session in sessions)
+            case _:
+                formatted_sessions = "None"
+
+        embed.add_field(name="Active Sessions", value=formatted_sessions, inline=False)
 
         row = await self._db.fetch_one(
             "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", (channel_id,)

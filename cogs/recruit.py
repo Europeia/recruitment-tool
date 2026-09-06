@@ -10,6 +10,7 @@ from cogs.report import ReportModal
 from components.bot import Bot
 from components.checks import is_global_admin, is_global_admin_text
 from components.errors import NationNotFound, WhitelistError
+from components.session import Session
 
 logger = logging.getLogger("main")
 
@@ -36,7 +37,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
 
         try:
             message = await channel.fetch_message(channel_id)
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+        except discord.NotFound, discord.Forbidden, discord.HTTPException:
             return None
 
         return message
@@ -161,6 +162,116 @@ class RegisterRecruiterModal(Modal, title="Registration"):
         await interation.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
 
+class StartSessionModal(Modal, title="Start"):
+    def __init__(self, bot: Bot):
+        super().__init__(timeout=None)
+        self._bot = bot
+
+    batch_size = discord.ui.Label(
+        text="Batch Size",
+        description="The minimum number of nations in a batch.",
+        component=discord.ui.Select(
+            options=[
+                discord.SelectOption(label="1", value="1"),
+                discord.SelectOption(label="2", value="2"),
+                discord.SelectOption(label="3", value="3"),
+                discord.SelectOption(label="4", value="4"),
+                discord.SelectOption(label="5", value="5"),
+                discord.SelectOption(label="6", value="6"),
+                discord.SelectOption(label="7", value="7"),
+                discord.SelectOption(label="8", value="8"),
+            ]
+        ),
+    )
+
+    cooldown = discord.ui.Label(
+        text="Cooldown",
+        description="The minimum time (excluding recruitment cooldown) between session pings.",
+        component=discord.ui.Select(
+            options=[
+                discord.SelectOption(label="No cooldown", value="0"),
+                discord.SelectOption(label="One Minute", value="60"),
+                discord.SelectOption(label="Two Minutes", value="120"),
+                discord.SelectOption(label="Three Minutes", value="180"),
+                discord.SelectOption(label="Four Minutes", value="240"),
+                discord.SelectOption(label="Five Minutes", value="360"),
+            ]
+        ),
+    )
+
+    shutdown_after = discord.ui.Label(
+        text="Shutdown After",
+        description="How long an inactive session should continue.",
+        component=discord.ui.Select(
+            options=[
+                discord.SelectOption(label="10 Minutes", value="10"),
+                discord.SelectOption(label="20 Minutes", value="20"),
+                discord.SelectOption(label="30 Minutes", value="30"),
+                discord.SelectOption(label="40 Minutes", value="40"),
+                discord.SelectOption(label="50 Minutes", value="50"),
+                discord.SelectOption(label="60 Minutes", value="60"),
+            ]
+        ),
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        assert isinstance(self.batch_size.component, discord.ui.Select)
+        assert isinstance(self.cooldown.component, discord.ui.Select)
+        assert isinstance(self.shutdown_after.component, discord.ui.Select)
+
+        batch_size = int(self.batch_size.component.values[0])
+        cooldown = int(self.cooldown.component.values[0])
+        shutdown_after = int(self.shutdown_after.component.values[0])
+
+        recruiter = await self._bot.get_recruiter(interaction.user, interaction.channel_id)
+
+        session = self._bot.session_manager.get_session_by_id(interaction.user.id)
+
+        if session and session.channel_id == interaction.channel_id:
+            new_session = Session(recruiter, batch_size, cooldown, shutdown_after)
+
+            self._bot.session_manager.remove_session(interaction.user.id)
+            self._bot.session_manager.add_session(new_session)
+
+            await interaction.response.send_message("Session updated!", ephemeral=True)
+        elif session and session.channel_id != interaction.channel_id:
+            await interaction.response.send_message("Session active in another recruitment channel!", ephemeral=True)
+
+        if not session:
+            session = Session(recruiter, batch_size, cooldown, shutdown_after)
+
+            self._bot.session_manager.add_session(session)
+
+            await interaction.response.send_message("Session started!", ephemeral=True)
+
+    async def on_error(self, interation: discord.Interaction, error: Exception):
+        logger.error(error)
+        await interation.response.send_message(f"An error occurred: {error}", ephemeral=True)
+
+
+class ModifyOrEndSessionView(View):
+    def __init__(self, bot: Bot):
+        super().__init__(timeout=None)
+        self._bot = bot
+        self.message = None
+
+    @discord.ui.button(label="Modify Session", style=discord.ButtonStyle.blurple)
+    async def modify(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        await interaction.response.send_modal(StartSessionModal(self._bot))
+
+    @discord.ui.button(label="End Session", style=discord.ButtonStyle.danger)
+    async def end(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        await self._disable_buttons()
+        self._bot.session_manager.remove_session(interaction.user.id)
+        await interaction.response.send_message("session ended!", ephemeral=True)
+
+    async def _disable_buttons(self):
+        self.modify.disabled = True
+        self.end.disabled = True
+
+        await self.message.edit(view=self)
+
+
 class RecruitView(View):
     def __init__(self, bot: Bot):
         super().__init__(timeout=None)
@@ -171,6 +282,19 @@ class RecruitView(View):
         embed, view, delete_after = await self.bot.create_recruitment_response(interaction.user, interaction.channel_id)
         view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
         await self.bot.update_status_embed(interaction.channel_id)
+
+    @discord.ui.button(label="Session", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:session")
+    async def session(self, interaction: discord.Interaction, _button: discord.ui.button):
+        if self.bot.session_manager.get_session_by_id(interaction.user.id):
+            view = ModifyOrEndSessionView(self.bot)
+
+            view.message = (
+                await interaction.response.send_message("Would you like to modify or end your current session?", view=view, ephemeral=True)
+            ).resource
+
+            return
+
+        await interaction.response.send_modal(StartSessionModal(self.bot))
 
     @discord.ui.button(label="Register", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:register")
     async def register(self, interaction: discord.Interaction, _button: discord.ui.button):
