@@ -64,3 +64,12 @@ class WhitelistError(app_commands.AppCommandError):
         # super().__init__(message=f"{self.user.name} attempted to register server {self.guild.name} without being "
         #                          f"whitelisted")
         super().__init__()
+
+
+class ActiveSessionError(commands.CommandError):
+    """raised when a user with an active session tries to recruit normally"""
+
+    def __init__(self, user: discord.User):
+        self._user = user
+
+        super().__init__(f"{self._user.name} attempted to recruit while in a session")

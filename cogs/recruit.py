@@ -9,7 +9,7 @@ from discord.ui import Modal, View
 from cogs.report import ReportModal
 from components.bot import Bot
 from components.checks import is_global_admin, is_global_admin_text
-from components.errors import NationNotFound, WhitelistError
+from components.errors import ActiveSessionError, NationNotFound, WhitelistError
 from components.session import Session
 
 logger = logging.getLogger("main")
@@ -279,6 +279,9 @@ class RecruitView(View):
 
     @discord.ui.button(label="Recruit", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:recruit")
     async def recruit(self, interaction: discord.Interaction, _button: discord.ui.button):
+        if self.bot.session_manager.get_session_by_id(interaction.user.id):
+            raise ActiveSessionError(interaction.user)
+
         embed, view, delete_after = await self.bot.create_recruitment_response(interaction.user, interaction.channel_id)
         view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
         await self.bot.update_status_embed(interaction.channel_id)
