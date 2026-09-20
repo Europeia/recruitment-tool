@@ -216,6 +216,8 @@ class Bot(commands.Bot):
             logger.warning("Failed to edit message %d in channel %d: %s", message_id, channel_id, e)
 
     async def update_status_embeds(self):
+        self.queue_manager.prune()
+
         channels = await self._db.fetch_all("SELECT channelId FROM recruitment_channels WHERE disabled = FALSE;")
 
         for channel in channels:
