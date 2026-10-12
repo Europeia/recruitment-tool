@@ -417,6 +417,11 @@ class QueueManager(AbstractAsyncContextManager):
         with self._queue_lock:
             return self._queues[channel_id].get_nation_count()
 
+    def prune(self):
+        with self._queue_lock:
+            for _, queue in self._queues.items():
+                queue.prune()
+
     def _handle_founding(self, event: FoundingEvent):
         if self._is_filtered(event.nation):
             logger.debug("likely puppet founding found; skipping: %s", event.nation)
