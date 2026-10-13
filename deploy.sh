@@ -40,6 +40,8 @@ if $PULL; then
   git pull origin main
 fi
 
+uv sync
+
 echo "waiting for MySQL"
 
 for _ in {1..30}; do
