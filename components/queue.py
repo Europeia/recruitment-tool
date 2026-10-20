@@ -34,8 +34,21 @@ class Event:
     timestamp: int
 
     @classmethod
-    def from_json(cls, dct) -> Self:
-        return cls(dct["id"], dct["htmlStr"], dct["str"], int(dct["time"]))
+    def from_json(cls, dct: dict[str, str]) -> Self | None:
+        try:
+            return cls(dct["id"], dct["htmlStr"], dct["str"], int(dct["time"]))
+        except KeyError:
+            logger.warning(
+                "failed to create event; one or more expected values missing (id: %s, htmlstr: %s, str: %s, time: %s)",
+                dct.get("id"),
+                dct.get("htmlStr"),
+                dct.get("str"),
+                dct.get("time"),
+            )
+            return None
+        except ValueError:
+            logger.warning("failed to create event; timestamp could not be converted to int (timestamp: %s)", dct.get("time"))
+            return None
 
     def __repr__(self):
         return f"<Event id={self.id} data={self.str}>"
@@ -452,7 +465,12 @@ class QueueManager(AbstractAsyncContextManager):
         if not ev.data:
             return
 
-        event: Event = json.loads(ev.data, object_hook=Event.from_json)
+        data = json.loads(ev.data)
+
+        event = Event.from_json(data)
+
+        if not event:
+            return
 
         if match := FOUNDING_REGEX.match(event.str):
             self._handle_founding(FoundingEvent(match[1], match[2], datetime.fromtimestamp(event.timestamp)))
