@@ -43,48 +43,34 @@ class ConfigManager:
     def readConfig(self) -> None:
         print("READ")
         try:
-            f = open("settings.json", "r")
+            with open("settings.json", "r") as f:
+                data = json.load(f)
+
+                self._data = ConfigData.from_dict(data)
         except FileNotFoundError:
             raise ConfigError(f"settings.json not found at {path.realpath('settings.json')}.")
-
-        try:
-            open_message = f"Loading settings from: {path.realpath(f.name)}"
-            if hasattr(self, "_std") and self._std is not None:
-                self._std.info(open_message)
-            else:
-                print(open_message)
-
-            try:
-                data = json.load(f)
-            except json.JSONDecodeError as e:
-                raise ConfigError(f"settings.json is malformed: {e}") from e
-        finally:
-            f.close()
-
-        try:
-            self._data = ConfigData.from_dict(data)
+        except json.JSONDecodeError as e:
+            raise ConfigError(f"settings.json is malformed: {e}") from e
         except KeyError as e:
             raise ConfigError(f"settings.json is missing required field: {e.args[0]}") from e
-        return
 
     def writeConfig(self) -> None:
-        f = open("settings.json", "w")
+        with open("settings.json", "w") as f:
+            data = {
+                "db_host": self._data.db_host,
+                "db_port": self._data.db_port,
+                "db_user": self._data.db_user,
+                "db_password": self._data.db_password,
+                "db_name": self._data.db_name,
+                "operator": self._data.operator,
+                "polling_rate": self._data.polling_rate,
+                "period_max": self._data.period_max,
+                "bot_token": self._data.bot_token,
+                "global_administrators": self._data.global_administrators,
+                "environment": self._data._environment,
+            }
 
-        data = {
-            "db_host": self._data.db_host,
-            "db_port": self._data.db_port,
-            "db_user": self._data.db_user,
-            "db_password": self._data.db_password,
-            "db_name": self._data.db_name,
-            "operator": self._data.operator,
-            "polling_rate": self._data.polling_rate,
-            "period_max": self._data.period_max,
-            "bot_token": self._data.bot_token,
-            "global_administrators": self._data.global_administrators,
-        }
-
-        json.dump(data, f, cls=ObjectEncoder, indent=2, skipkeys=True)
-        return
+            json.dump(data, f, cls=ObjectEncoder, indent=2, skipkeys=True)
 
 
 configInstance = ConfigManager()
