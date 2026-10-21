@@ -32,7 +32,6 @@ class ConfigManager:
     _data: ConfigData
 
     def __init__(self) -> None:
-        print("INIT")
         self.read_config()
         return
 
@@ -41,7 +40,6 @@ class ConfigManager:
         return self._data
 
     def read_config(self) -> None:
-        print("READ")
         try:
             with open("settings.json", "r") as f:
                 data = json.load(f)
