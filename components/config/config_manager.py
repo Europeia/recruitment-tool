@@ -33,14 +33,14 @@ class ConfigManager:
 
     def __init__(self) -> None:
         print("INIT")
-        self.readConfig()
+        self.read_config()
         return
 
     @property
     def data(self) -> ConfigData:
         return self._data
 
-    def readConfig(self) -> None:
+    def read_config(self) -> None:
         print("READ")
         try:
             with open("settings.json", "r") as f:
@@ -54,7 +54,7 @@ class ConfigManager:
         except KeyError as e:
             raise ConfigError(f"settings.json is missing required field: {e.args[0]}") from e
 
-    def writeConfig(self) -> None:
+    def write_config(self) -> None:
         with open("settings.json", "w") as f:
             data = {
                 "db_host": self._data.db_host,
