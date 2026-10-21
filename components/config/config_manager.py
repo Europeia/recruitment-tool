@@ -1,6 +1,5 @@
 import inspect
 import json
-from logging import Logger
 from os import path
 
 from .config_model import ConfigData
@@ -31,7 +30,6 @@ class ObjectEncoder(json.JSONEncoder):
 
 class ConfigManager:
     _data: ConfigData
-    _std: Logger
 
     def __init__(self) -> None:
         print("INIT")
@@ -41,10 +39,6 @@ class ConfigManager:
     @property
     def data(self) -> ConfigData:
         return self._data
-
-    def set_logger(self, logger: Logger) -> None:
-        self._std = logger
-        return
 
     def readConfig(self) -> None:
         print("READ")
