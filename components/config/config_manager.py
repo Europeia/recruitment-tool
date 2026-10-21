@@ -8,13 +8,13 @@ from .errors import ConfigError
 
 
 class ObjectEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if hasattr(obj, "to_json"):
-            return self.default(obj.to_json())
-        elif hasattr(obj, "__dict__"):
+    def default(self, o):
+        if hasattr(o, "to_json"):
+            return self.default(o.to_json())
+        elif hasattr(o, "__dict__"):
             d = dict(
                 (key, value)
-                for key, value in inspect.getmembers(obj)
+                for key, value in inspect.getmembers(o)
                 if not key.startswith("_")
                 and not inspect.isabstract(value)
                 and not inspect.isbuiltin(value)
@@ -26,7 +26,7 @@ class ObjectEncoder(json.JSONEncoder):
                 and not inspect.isroutine(value)
             )
             return self.default(d)
-        return obj
+        return o
 
 
 class ConfigManager:
