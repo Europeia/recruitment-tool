@@ -50,8 +50,6 @@ async def main():
     logger.setLevel(configInstance.data.log_level)
     logger.info("configured %s logging", configInstance.data.environment)
 
-    return
-
     async with aiohttp.ClientSession() as session:
         async with aiomysql.create_pool(
             host=configInstance.data.db_host,
