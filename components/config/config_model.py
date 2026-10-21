@@ -1,6 +1,20 @@
 from typing import Dict, List, Type, TypeVar
+from enum import StrEnum
 
 T = TypeVar("T", bound="ConfigData")
+
+
+class Environment(StrEnum):
+    DEVELOPMENT = "development"
+    PRODUCTION = "production"
+
+
+class LogLevel(StrEnum):
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
 
 
 class ConfigData:
@@ -53,6 +67,14 @@ class ConfigData:
         """discord user ids for users with superadmin permissions"""
         return self._global_administrators
 
+    @property
+    def environment(self) -> Environment:
+        return self._environment
+
+    @property
+    def log_level(self) -> LogLevel:
+        return self._log_level
+
     @classmethod
     def from_dict(cls: Type[T], dict: Dict) -> T:
         return cls(
@@ -66,8 +88,9 @@ class ConfigData:
             period_max=dict["period_max"],
             bot_token=dict["bot_token"],
             global_administrators=dict["global_administrators"],
+            environment=dict["environment"].lower(),
+            log_level=dict["log_level"].upper(),
         )
-        return
 
     def __init__(
         self,
@@ -81,6 +104,8 @@ class ConfigData:
         period_max=0,
         bot_token="",
         global_administrators=[],
+        environment=Environment.DEVELOPMENT,
+        log_level=LogLevel.INFO,
     ) -> None:
         self._db_host = db_host
         self._db_port = db_port
@@ -92,3 +117,5 @@ class ConfigData:
         self._period_max = period_max
         self._bot_token = bot_token
         self._global_administrators = global_administrators
+        self._environment = environment
+        self._log_level = log_level

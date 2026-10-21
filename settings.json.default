@@ -15,5 +15,7 @@
   "period_max": 5,
   "bot_token": "<Discord Bot Token>",
   "recruitment_exceptions": [],
-  "global_administrators": []
+  "global_administrators": [],
+  "environment": "development",
+  "log_level": "info"
 }
