@@ -1,10 +1,13 @@
 import discord
+import logging
 
 from discord import app_commands
 from discord.ext import commands
 
 from components.bot import Bot
 import components.errors as errors
+
+logger = logging.getLogger("main")
 
 
 class Error(commands.Cog):
@@ -14,28 +17,25 @@ class Error(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        # self.bot.std.error(error)
-        print(error)
-        print(type(error))
+        logger.error("command error: %s (%s)", error, type(error))
 
         if isinstance(error, commands.MissingPermissions):
             await ctx.reply("You must be an Admin or Recruit Manager to run this command.", ephemeral=True)
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.reply(f"Missing required argument: {error.param}", ephemeral=True)
         else:
-            await ctx.reply(f"{error}\n\n{type(error)}", ephemeral=True)
+            await ctx.reply("an unexpected error occurred, please contact a bot administrator", ephemeral=True)
 
     @staticmethod
     async def on_error(interaction: discord.Interaction, error: app_commands.AppCommandError) -> None:
-        print(error)
-        print(type(error))
+        logger.error("app command error: %s (%s)", error, type(error))
 
         if isinstance(error, errors.WhitelistError):
             await interaction.response.send_message(
                 f"This server is not whitelisted for recruitment. Please contact a bot administrator.", ephemeral=True
             )
         else:
-            await interaction.response.send_message(f"An error occurred:\n```{error}```\n{type(error)}", ephemeral=True)
+            await interaction.response.send_message("an unexpected error occurred, please contact a bot administrator", ephemeral=True)
 
 
 async def setup(bot: Bot):

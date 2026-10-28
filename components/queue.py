@@ -123,12 +123,14 @@ class Queue:
 
     def handle_move(self, nation_name: str, destination: str):
         if destination in self._whitelist:
+            logger.debug("move event: removing nation from queue: %s", nation_name)
             self._nations = [nation for nation in self._nations if nation.name != nation_name]
 
             self._last_updated = datetime.now(timezone.utc)
 
     def handle_founding(self, nation: Nation):
         if nation.region not in self._whitelist:
+            logger.debug("founding: adding new nation to queue: %s", nation.name)
             self._nations.insert(0, nation)
 
             self._last_updated = datetime.now(timezone.utc)
@@ -480,6 +482,7 @@ def sse_retrying(client, method, url):
 
     @retry(on=httpx.ReadError)
     def _iter_sse():
+        logger.info("running _iter_sse()")
         nonlocal last_event_id, reconnection_delay
 
         time.sleep(reconnection_delay)
