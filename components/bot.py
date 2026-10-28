@@ -59,9 +59,10 @@ class Bot(commands.Bot):
 
         default_cogs = ["base", "recruit", "report", "error_handler", "session"]
 
+        logger.info("loading cogs")
         for cog in default_cogs:
             await self.load_extension(f"cogs.{cog}")
-            print(f"Loaded cog: {cog}")
+            logger.debug("loaded cog: %s", cog)
 
     async def get_recruiter_id(self, user: discord.User, channel_id: int) -> Optional[int]:
         row = await self._db.fetch_one(
@@ -161,7 +162,7 @@ class Bot(commands.Bot):
         return None
 
     async def update_status_embed(self, channel_id: int):
-        logger.info("updating status embed for channel %d", channel_id)
+        logger.debug("updating status embed for channel %d", channel_id)
 
         embed = discord.Embed(title="Recruitment Queue")
         embed.add_field(name="Nations in Queue", value=self._queue_list.get_nation_count(channel_id))
@@ -216,6 +217,7 @@ class Bot(commands.Bot):
             logger.warning("Failed to edit message %d in channel %d: %s", message_id, channel_id, e)
 
     async def update_status_embeds(self):
+        logger.info("updating all status embeds")
         self.queue_manager.prune()
 
         channels = await self._db.fetch_all("SELECT channelId FROM recruitment_channels WHERE disabled = FALSE;")

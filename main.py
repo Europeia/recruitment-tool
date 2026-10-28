@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import signal
 import sys
 import tempfile
@@ -10,24 +11,45 @@ import aiomysql
 from filelock import FileLock, Timeout
 
 from components.config.errors import ConfigError
-
-try:
-    from components.config.config_manager import configInstance
-except ConfigError as e:
-    print(f"Error loading configuration: {e}", file=sys.stderr)
-    sys.exit(1)
-
+from components.config.config_model import Environment
 from components.bot import Bot
 from components.ns_client import NSClient
 from components.queue import QueueManager
 
+
 logger = logging.getLogger("main")
-handler = logging.StreamHandler()
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+
+try:
+    from components.config.config_manager import configInstance
+except ConfigError:
+    logger.exception("error loading configuration")
+    sys.exit(1)
 
 
 async def main():
+    match configInstance.data.environment:
+        case Environment.PRODUCTION:
+            log_file = Path(__file__).resolve().parent / "asperta.log"
+
+            formatter = logging.Formatter(
+                fmt="%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            )
+
+            file_handler = TimedRotatingFileHandler(filename=log_file, when="midnight", backupCount=7, encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+        case _:
+            formatter = logging.Formatter(
+                fmt="%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            )
+
+            stream_handler = logging.StreamHandler()
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(stream_handler)
+
+    logger.setLevel(configInstance.data.log_level)
+    logger.info("configured %s logging", configInstance.data.environment)
+
     async with aiohttp.ClientSession() as session:
         async with aiomysql.create_pool(
             host=configInstance.data.db_host,

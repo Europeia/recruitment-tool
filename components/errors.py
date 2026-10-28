@@ -5,7 +5,7 @@ from discord.ext import commands
 
 class EmptyQueue(commands.CommandError):
     def __init__(self):
-        super().__init__(message=f"queue empty")
+        super().__init__(message="queue empty")
 
 
 class LastRecruitmentTooRecent(commands.CommandError):

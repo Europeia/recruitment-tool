@@ -9,7 +9,7 @@ from discord.ui import Modal, View
 from cogs.report import ReportModal
 from components.bot import Bot
 from components.checks import is_global_admin, is_global_admin_text
-from components.errors import ActiveSessionError, NationNotFound, WhitelistError
+from components.errors import ActiveSessionError, NationNotFound, WhitelistError, EmptyQueue, NotRegistered
 from components.session import Session
 
 logger = logging.getLogger("main")
@@ -278,7 +278,7 @@ class RecruitView(View):
         self.bot = bot
 
     @discord.ui.button(label="Recruit", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:recruit")
-    async def recruit(self, interaction: discord.Interaction, _button: discord.ui.button):
+    async def recruit(self, interaction: discord.Interaction, _button: discord.ui.Button):
         if self.bot.session_manager.get_session_by_id(interaction.user.id):
             raise ActiveSessionError(interaction.user)
 
@@ -287,7 +287,7 @@ class RecruitView(View):
         await self.bot.update_status_embed(interaction.channel_id)
 
     @discord.ui.button(label="Session", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:session")
-    async def session(self, interaction: discord.Interaction, _button: discord.ui.button):
+    async def session(self, interaction: discord.Interaction, _button: discord.ui.Button):
         if self.bot.session_manager.get_session_by_id(interaction.user.id):
             view = ModifyOrEndSessionView(self.bot)
 
@@ -300,16 +300,21 @@ class RecruitView(View):
         await interaction.response.send_modal(StartSessionModal(self.bot))
 
     @discord.ui.button(label="Register", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:register")
-    async def register(self, interaction: discord.Interaction, _button: discord.ui.button):
+    async def register(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await interaction.response.send_modal(RegisterRecruiterModal(self.bot))
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:report")
-    async def report(self, interaction: discord.Interaction, _button: discord.ui.button):
+    async def report(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await interaction.response.send_modal(ReportModal(self.bot))
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
-        logger.error(error)
-        await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+        if isinstance(error, EmptyQueue):
+            await interaction.response.send_message("the queue is empty", ephemeral=True)
+        elif isinstance(error, NotRegistered):
+            await interaction.response.send_message("you must be registered to recruit", ephemeral=True)
+        else:
+            logger.error(error)
+            await interaction.response.send_message("an unexpected error occurred, please contact a bot administrator", ephemeral=True)
 
 
 class TelegramView(View):
