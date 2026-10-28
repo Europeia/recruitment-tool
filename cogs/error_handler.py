@@ -32,7 +32,7 @@ class Error(commands.Cog):
 
         if isinstance(error, errors.WhitelistError):
             await interaction.response.send_message(
-                f"This server is not whitelisted for recruitment. Please contact a bot administrator.", ephemeral=True
+                "This server is not whitelisted for recruitment. Please contact a bot administrator.", ephemeral=True
             )
         else:
             await interaction.response.send_message("an unexpected error occurred, please contact a bot administrator", ephemeral=True)
