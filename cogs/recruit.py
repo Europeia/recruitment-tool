@@ -9,7 +9,7 @@ from discord.ui import Modal, View
 from cogs.report import ReportModal
 from components.bot import Bot
 from components.checks import is_global_admin, is_global_admin_text
-from components.errors import ActiveSessionError, NationNotFound, WhitelistError
+from components.errors import ActiveSessionError, NationNotFound, WhitelistError, EmptyQueue, NotRegistered
 from components.session import Session
 
 logger = logging.getLogger("main")
@@ -308,8 +308,13 @@ class RecruitView(View):
         await interaction.response.send_modal(ReportModal(self.bot))
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
-        logger.error(error)
-        await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+        if isinstance(error, EmptyQueue):
+            await interaction.response.send_message("the queue is empty", ephemeral=True)
+        elif isinstance(error, NotRegistered):
+            await interaction.response.send_message("you must be registered to recruit", ephemeral=True)
+        else:
+            logger.error(error)
+            await interaction.response.send_message("an unexpected error occurred, please contact a bot administrator", ephemeral=True)
 
 
 class TelegramView(View):
