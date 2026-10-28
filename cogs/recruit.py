@@ -278,7 +278,7 @@ class RecruitView(View):
         self.bot = bot
 
     @discord.ui.button(label="Recruit", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:recruit")
-    async def recruit(self, interaction: discord.Interaction, _button: discord.ui.button):
+    async def recruit(self, interaction: discord.Interaction, _button: discord.ui.Button):
         if self.bot.session_manager.get_session_by_id(interaction.user.id):
             raise ActiveSessionError(interaction.user)
 
@@ -287,7 +287,7 @@ class RecruitView(View):
         await self.bot.update_status_embed(interaction.channel_id)
 
     @discord.ui.button(label="Session", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:session")
-    async def session(self, interaction: discord.Interaction, _button: discord.ui.button):
+    async def session(self, interaction: discord.Interaction, _button: discord.ui.Button):
         if self.bot.session_manager.get_session_by_id(interaction.user.id):
             view = ModifyOrEndSessionView(self.bot)
 
@@ -300,11 +300,11 @@ class RecruitView(View):
         await interaction.response.send_modal(StartSessionModal(self.bot))
 
     @discord.ui.button(label="Register", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:register")
-    async def register(self, interaction: discord.Interaction, _button: discord.ui.button):
+    async def register(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await interaction.response.send_modal(RegisterRecruiterModal(self.bot))
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:report")
-    async def report(self, interaction: discord.Interaction, _button: discord.ui.button):
+    async def report(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await interaction.response.send_modal(ReportModal(self.bot))
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
