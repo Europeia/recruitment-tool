@@ -321,7 +321,9 @@ class RecruitView(View):
             raise ValueError("interaction.channel_id can't be none")
 
         embed, view, delete_after = await self.bot.create_recruitment_response(interaction.user, interaction.channel_id)
-        view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
+
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
+
         await self.bot.update_status_embed(interaction.channel_id)
 
     @discord.ui.button(label="Session", style=discord.ButtonStyle.blurple, custom_id="recruitment_view:session")
