@@ -47,11 +47,11 @@ class TooManyRequests(commands.CommandError):
 class NationNotFound(commands.CommandError):
     """Raised when a nation cannot be retrieved via the NationStates API"""
 
-    def __init__(self, user: discord.User, nation: str):
-        self.user = user
-        self.nation = nation
+    def __init__(self, user: discord.User | discord.Member, nation: str):
+        self._user = user
+        self._nation = nation
 
-        super().__init__(message=f"{self.nation} does not exist")
+        super().__init__(message=f"{self._nation} does not exist")
 
 
 class WhitelistError(app_commands.AppCommandError):
