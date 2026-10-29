@@ -63,7 +63,7 @@ class Bot(commands.Bot):
             await self.load_extension(f"cogs.{cog}")
             logger.debug("loaded cog: %s", cog)
 
-    async def get_recruiter_id(self, user: discord.User, channel_id: int) -> Optional[int]:
+    async def get_recruiter_id(self, user: discord.User | discord.Member, channel_id: int) -> Optional[int]:
         row = await self._db.fetch_one(
             """SELECT users.id
                FROM users
