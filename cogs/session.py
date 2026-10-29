@@ -53,7 +53,16 @@ class SessionKeepAliveView(View):
     @discord.ui.button(label="Keep Alive", style=discord.ButtonStyle.blurple)
     async def keep_alive(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self._disable_buttons()
-        self._bot.session_manager.get_session_by_id(interaction.user.id).last_activity = datetime.now(timezone.utc)
+
+        session = self._bot.session_manager.get_session_by_id(interaction.user.id)
+
+        if not session:
+            logger.warning("session keep alive: can't find session with id %d", interaction.user.id)
+            await interaction.response.send_message("couldn't find session", ephemeral=True)
+            return
+
+        session.last_activity = datetime.now(timezone.utc)
+
         await interaction.response.send_message("activity confirmed, session continuing!", ephemeral=True)
 
     @discord.ui.button(label="End Session", style=discord.ButtonStyle.danger)
