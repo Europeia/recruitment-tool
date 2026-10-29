@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 import aiomysql
@@ -10,7 +10,6 @@ from components.database import Database
 from components.errors import LastRecruitmentTooRecent, NotRegistered
 from components.ns_client import NSClient
 from components.queue import QueueManager
-from components.recruiter import Recruiter
 from components.session import SessionManager
 
 logger = logging.getLogger("main")
