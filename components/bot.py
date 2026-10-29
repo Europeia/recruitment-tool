@@ -76,7 +76,7 @@ class Bot(commands.Bot):
 
         return row[0] if row else None
 
-    async def get_recruiter(self, user: discord.User, channel_id: int):
+    async def get_recruiter(self, user: discord.User | discord.Member, channel_id: int):
         recruiter = await self._db.get_recruiter(user.id, channel_id)
 
         if not recruiter:
@@ -84,7 +84,7 @@ class Bot(commands.Bot):
 
         return recruiter
 
-    async def create_recruitment_response(self, user: discord.User, channel_id: int):
+    async def create_recruitment_response(self, user: discord.User | discord.Member, channel_id: int):
         from cogs.recruit import TelegramView
 
         session = self._session_manager.get_session_by_id(user.id)
