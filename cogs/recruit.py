@@ -157,6 +157,9 @@ class RegisterRecruiterModal(Modal, title="Registration"):
         except AttributeError:
             raise NationNotFound(interaction.user, nation)
 
+        if interaction.channel_id is None:
+            raise ValueError("interaction.channel_id can't be none")
+
         recruiter_id = await self.bot.get_recruiter_id(interaction.user, interaction.channel_id)
 
         async with self.bot.pool.acquire() as conn:
@@ -243,6 +246,9 @@ class StartSessionModal(Modal, title="Start"):
         cooldown = int(self.cooldown.component.values[0])
         shutdown_after = int(self.shutdown_after.component.values[0])
 
+        if interaction.channel_id is None:
+            raise ValueError("interaction.channel_id can't be none")
+
         recruiter = await self._bot.get_recruiter(interaction.user, interaction.channel_id)
 
         session = self._bot.session_manager.get_session_by_id(interaction.user.id)
@@ -301,6 +307,9 @@ class RecruitView(View):
     async def recruit(self, interaction: discord.Interaction, _button: discord.ui.Button):
         if self.bot.session_manager.get_session_by_id(interaction.user.id):
             raise ActiveSessionError(interaction.user)
+
+        if interaction.channel_id is None:
+            raise ValueError("interaction.channel_id can't be none")
 
         embed, view, delete_after = await self.bot.create_recruitment_response(interaction.user, interaction.channel_id)
         view.message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=3 + delete_after)
@@ -375,7 +384,7 @@ class RecruitmentCog(commands.Cog):
 
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("SELECT id FROM whitelist WHERE serverId = %s;", (interaction.guild.id,))
+                await cur.execute("SELECT id FROM whitelist WHERE serverId = %s;", (guild.id,))
 
                 if not await cur.fetchone():
                     raise WhitelistError(interaction.user, guild)
