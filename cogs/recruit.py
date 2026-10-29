@@ -24,56 +24,72 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         text="Region", component=discord.ui.TextInput(placeholder="Enter your region name", min_length=1, max_length=40)
     )
 
+    def _validate_channel(self, interaction: discord.Interaction) -> discord.TextChannel | discord.Thread | None:
+        channel = interaction.channel
+
+        if not channel:
+            logger.warning("_reactivate_recruitment_channel channel is None")
+            return None
+
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            logger.warning("_reactivate_recruitment_channel run in something other than a text channel or thread (id: %d)", channel.id)
+            return None
+
+        return channel
+
     async def _retrieve_recruitment_message(self, channel_id: int) -> discord.Message | None:
         channel = await self.bot.resolve_channel(channel_id)
 
         if not channel:
+            logger.warning("_retrieve_recruitment_message: could not resolve channel with id %d", channel_id)
             return None
 
         message_id = await self.bot.db.get_recruitment_message_id(channel_id)
 
         if not message_id:
+            logger.warning("_retrieve_recruitment_message: could not get message id from database for channel with id %d", channel_id)
             return None
 
         try:
-            message = await channel.fetch_message(channel_id)
+            message = await channel.fetch_message(message_id)
         except discord.NotFound, discord.Forbidden, discord.HTTPException:
+            logger.warning("_retrieve_recruitment_message: could not retrieve recrutiment message with id: %d", message_id)
             return None
 
         return message
 
-    async def _reactivate_recruitment_channel(self, interaction: discord.Interaction, channel_id: int):
+    async def _reactivate_recruitment_channel(self, channel: discord.TextChannel | discord.Thread) -> str:
         # check if channel is registered but not loaded
-        if not self.bot.queue_manager.has_channel(channel_id):
-            channel_whitelist = await self.bot.db.get_channel_whitelist(channel_id)
+        if not self.bot.queue_manager.has_channel(channel.id):
+            channel_whitelist = await self.bot.db.get_channel_whitelist(channel.id)
 
-            self.bot.queue_manager.add_channel(channel_id, channel_whitelist)
+            self.bot.queue_manager.add_channel(channel.id, channel_whitelist)
 
         # try to use old recruitment message
-        message = await self._retrieve_recruitment_message(channel_id)
+        message = await self._retrieve_recruitment_message(channel.id)
 
         if not message:
-            message = await interaction.channel.send(view=RecruitView(self.bot))
+            message = await channel.send(view=RecruitView(self.bot))
 
-        await self.bot.db.update_recruitment_message_id(channel_id, message.id)
+        await self.bot.db.update_recruitment_message_id(channel.id, message.id)
 
-        await self.bot.db.enable_recruitment_channel(channel_id)
+        await self.bot.db.enable_recruitment_channel(channel.id)
 
-        await interaction.response.send_message("Reregistered channel", ephemeral=True)
+        return "Reregistered channel"
 
-    async def _register_recruitment_channel(self, interaction: discord.Interaction, server_id: int, channel_id: int, region: str):
-        recruitment_message = await interaction.channel.send(view=RecruitView(self.bot))
+    async def _register_recruitment_channel(self, channel: discord.TextChannel | discord.Thread, region: str) -> str:
+        recruitment_message = await channel.send(view=RecruitView(self.bot))
 
         try:
-            await self.bot.db.register_recruitment_channel(server_id, channel_id, recruitment_message.id)
-            await self.bot.db.add_to_channel_whitelist(channel_id, region)
+            await self.bot.db.register_recruitment_channel(channel.guild.id, channel.id, recruitment_message.id)
+            await self.bot.db.add_to_channel_whitelist(channel.id, region)
 
-            self.bot.queue_manager.add_channel(channel_id, [region])
+            self.bot.queue_manager.add_channel(channel.id, [region])
         except Exception as e:
             await recruitment_message.delete()
             raise e
 
-        await interaction.response.send_message(f"Registered channel for region: {region}", ephemeral=True)
+        return f"Registered channel for region: {region}"
 
     async def on_submit(self, interaction: discord.Interaction):
         assert isinstance(self.region.component, discord.ui.TextInput)
@@ -81,16 +97,20 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         if self.is_finished() and self.region.component.value == "":
             raise ValueError("Region cannot be empty")
 
-        server_id = interaction.guild.id
-        channel_id = interaction.channel.id
+        channel = self._validate_channel(interaction)
+        if not channel:
+            raise ValueError("command must be run in a text channel or thread")
+
         region = self.region.component.value.strip().lower().replace(" ", "_")
 
-        is_registered = await self.bot.db.is_registered_recruitment_channel(channel_id)
+        is_registered = await self.bot.db.is_registered_recruitment_channel(channel.id)
 
         if not is_registered:
-            await self._register_recruitment_channel(interaction, server_id, channel_id, region)
+            message = await self._register_recruitment_channel(channel, region)
         else:
-            await self._reactivate_recruitment_channel(interaction, channel_id)
+            message = await self._reactivate_recruitment_channel(channel)
+
+        await interaction.response.send_message(message, ephemeral=True)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         logger.exception(error)
