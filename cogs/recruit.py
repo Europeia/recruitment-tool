@@ -279,7 +279,7 @@ class ModifyOrEndSessionView(View):
     def __init__(self, bot: Bot):
         super().__init__(timeout=None)
         self._bot = bot
-        self.message = None
+        self._message = None
 
     @discord.ui.button(label="Modify Session", style=discord.ButtonStyle.blurple)
     async def modify(self, interaction: discord.Interaction, _button: discord.ui.Button):
@@ -291,11 +291,20 @@ class ModifyOrEndSessionView(View):
         self._bot.session_manager.remove_session(interaction.user.id)
         await interaction.response.send_message("session ended!", ephemeral=True)
 
+    @property
+    def message(self) -> discord.InteractionMessage | None:
+        return self._message
+
+    @message.setter
+    def message(self, message: discord.InteractionMessage):
+        self._message = message
+
     async def _disable_buttons(self):
         self.modify.disabled = True
         self.end.disabled = True
 
-        await self.message.edit(view=self)
+        if self._message:
+            await self._message.edit(view=self)
 
 
 class RecruitView(View):
@@ -320,9 +329,15 @@ class RecruitView(View):
         if self.bot.session_manager.get_session_by_id(interaction.user.id):
             view = ModifyOrEndSessionView(self.bot)
 
-            view.message = (
+            message = (
                 await interaction.response.send_message("Would you like to modify or end your current session?", view=view, ephemeral=True)
             ).resource
+
+            if not isinstance(message, discord.InteractionMessage):
+                logger.warning("session modify or end: unexpectedly returned a discord.InteractionCallBackActivityInstance")
+                return
+
+            view.message = message
 
             return
 
