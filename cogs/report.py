@@ -6,7 +6,6 @@ from discord.ext import commands
 from discord.ui import Modal
 
 from components.bot import Bot
-from models.db import Streak
 
 logger = logging.getLogger("main")
 

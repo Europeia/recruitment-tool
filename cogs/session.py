@@ -1,11 +1,10 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
 
 import discord
 from discord import Interaction
 from discord.ext import commands, tasks
-from discord.ui import Item, View
+from discord.ui import View
 
 from components.bot import Bot
 from components.session import Session
