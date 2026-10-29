@@ -9,11 +9,11 @@ class EmptyQueue(commands.CommandError):
 
 
 class LastRecruitmentTooRecent(commands.CommandError):
-    def __init__(self, user: discord.User, reset_in: float):
-        self.user = user
-        self.reset_in = reset_in
+    def __init__(self, user: discord.User | discord.Member, reset_in: float):
+        self._user = user
+        self._reset_in = reset_in
 
-        super().__init__(message=f"{self.user.name}'s last recruitment was too recent, reset in {self.reset_in:.2f} seconds.")
+        super().__init__(message=f"{self._user.name}'s last recruitment was too recent, reset in {self._reset_in:.2f} seconds.")
 
 
 class NoRecruiterRole(commands.CommandError):
@@ -31,10 +31,10 @@ class NotRecruitManager(commands.CommandError):
 
 
 class NotRegistered(commands.CommandError):
-    def __init__(self, user: discord.User):
-        self.user = user
+    def __init__(self, user: discord.User | discord.Member):
+        self._user = user
 
-        super().__init__(message=f"{self.user.name} has not registered as a recruiter")
+        super().__init__(message=f"{self._user.name} has not registered as a recruiter")
 
 
 class TooManyRequests(commands.CommandError):
@@ -69,7 +69,7 @@ class WhitelistError(app_commands.AppCommandError):
 class ActiveSessionError(commands.CommandError):
     """raised when a user with an active session tries to recruit normally"""
 
-    def __init__(self, user: discord.User):
+    def __init__(self, user: discord.User | discord.Member):
         self._user = user
 
         super().__init__(f"{self._user.name} attempted to recruit while in a session")
