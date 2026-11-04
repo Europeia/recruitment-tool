@@ -5,9 +5,9 @@ import re
 import threading
 import time
 from contextlib import AbstractAsyncContextManager
-from dataclasses import dataclass, field
+from dataclasses import field
 from datetime import datetime, timedelta, timezone
-from typing import List, Self
+from typing import List
 
 import aiomysql
 import httpx
@@ -16,6 +16,8 @@ from stamina import retry
 
 from components.database import Database
 from components.errors import EmptyQueue
+from models.nation import Nation
+from models.events import Event, FoundingEvent, MoveEvent
 
 logger = logging.getLogger("main")
 
@@ -24,56 +26,6 @@ FOUNDING_REGEX = re.compile("^@@([a-z0-9_]+)@@ was founded in %%([a-z0-9_]+)%%.?
 MOVE_REGEX = re.compile("^@@([a-z0-9_]+)@@ relocated from %%([a-z0-9_]+)%% to %%([a-z0-9_]+)%%.?$")
 
 HEADERS = {}
-
-
-@dataclass
-class Event:
-    id: str
-    htmlstr: str
-    str: str
-    timestamp: int
-
-    @classmethod
-    def from_json(cls, dct: dict[str, str]) -> Self | None:
-        try:
-            return cls(dct["id"], dct["htmlStr"], dct["str"], int(dct["time"]))
-        except KeyError:
-            logger.warning(
-                "failed to create event; one or more expected values missing (id: %s, htmlstr: %s, str: %s, time: %s)",
-                dct.get("id"),
-                dct.get("htmlStr"),
-                dct.get("str"),
-                dct.get("time"),
-            )
-            return None
-        except ValueError:
-            logger.warning("failed to create event; timestamp could not be converted to int (timestamp: %s)", dct.get("time"))
-            return None
-
-    def __repr__(self):
-        return f"<Event id={self.id} data={self.str}>"
-
-
-@dataclass
-class FoundingEvent:
-    nation: str
-    region: str
-    timestamp: datetime
-
-
-@dataclass
-class MoveEvent:
-    nation: str
-    moved_from: str
-    moved_to: str
-    timestamp: datetime
-
-
-@dataclass
-class Nation:
-    name: str
-    region: str
-    founding_time: datetime
 
 
 class Queue:
