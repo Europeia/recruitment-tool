@@ -1,3 +1,4 @@
+from components.filter import Filter
 import asyncio
 import json
 import logging
@@ -115,6 +116,7 @@ class QueueManager(AbstractAsyncContextManager):
     _pool: aiomysql.Pool
     _queues: dict[int, Queue] = field(default_factory=dict)
     _queue_lock: threading.Lock
+    _nation_filter: Filter
     _filters: List[re.Pattern]
     _filter_lock: threading.Lock
     _update_thread: threading.Thread
@@ -126,6 +128,7 @@ class QueueManager(AbstractAsyncContextManager):
         self._pool = pool
         self._queues = {}
         self._queue_lock = threading.Lock()
+        self._nation_filter = Filter()
         self._filters = []
         self._filter_lock = threading.Lock()
         self._running = True
@@ -398,9 +401,15 @@ class QueueManager(AbstractAsyncContextManager):
             logger.debug("founding in whitelisted region; skipping %s", event.nation)
             return
 
+        nation = Nation(event.nation, event.region, event.timestamp.astimezone(timezone.utc))
+
+        if self._nation_filter.filter(nation) is None:
+            logger.debug("founding filtered out; skipping: %s", event.nation)
+            return
+
         with self._queue_lock:
             for _, queue in self._queues.items():
-                queue.handle_founding(Nation(event.nation, event.region, event.timestamp.astimezone(timezone.utc)))
+                queue.handle_founding(nation)
 
     def _handle_move(self, event: MoveEvent):
         if self._is_filtered(event.nation):
