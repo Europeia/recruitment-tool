@@ -96,7 +96,6 @@ class Queue:
 
     def handle_founding(self, nation: Nation):
         if nation.region not in self._whitelist:
-            logger.debug("founding: adding new nation to queue: %s", nation.name)
             self._nations.insert(0, nation)
 
             self._last_updated = datetime.now(timezone.utc)
@@ -393,6 +392,7 @@ class QueueManager(AbstractAsyncContextManager):
                 queue.prune()
 
     def _handle_founding(self, event: FoundingEvent):
+        logger.debug("founding: processing event for nation: %s", event.nation)
         if self._is_filtered(event.nation):
             logger.debug("likely puppet founding found; skipping: %s", event.nation)
             return
@@ -407,11 +407,13 @@ class QueueManager(AbstractAsyncContextManager):
             logger.debug("founding filtered out; skipping: %s", event.nation)
             return
 
+        logger.debug("founding: adding new nation to queue: %s", nation.name)
         with self._queue_lock:
             for _, queue in self._queues.items():
                 queue.handle_founding(nation)
 
     def _handle_move(self, event: MoveEvent):
+        logger.debug("move: processing event for nation: %s", event.nation)
         if self._is_filtered(event.nation):
             logger.debug("likely puppet move found; skipping: %s", event.nation)
             return
@@ -420,6 +422,7 @@ class QueueManager(AbstractAsyncContextManager):
             logger.debug("move to whitelisted region; skipping %s", event.nation)
             return
 
+        logger.debug("move: removing nation from queues if present in whitelist: %s", event.nation)
         with self._queue_lock:
             for _, queue in self._queues.items():
                 queue.handle_move(event.nation, event.moved_to)
