@@ -6,7 +6,6 @@ from discord.ext import commands
 from discord.ui import Modal
 
 from components.bot import Bot
-from models.db import Streak
 
 logger = logging.getLogger("main")
 
@@ -51,8 +50,15 @@ class ReportModal(Modal, title="Recruitment Report"):
         end_time = datetime.fromisoformat(self.end_time.component.value).replace(tzinfo=timezone.utc)
         report_type = self.r_type.component.value
 
+        channel_id = interaction.channel_id
+
+        if not channel_id:
+            logger.warning("report: channel_id is None")
+            await interaction.response.send_message("recruitment channel id can't be None")
+            return
+
         if report_type == "streaks":
-            result = await self.bot.db.get_streaks(start_time, end_time, interaction.channel_id)
+            result = await self.bot.db.get_streaks(start_time, end_time, channel_id)
 
             if result:
                 resp = "\n".join([f"{streak.nation}: {streak.streak} day{'s' if streak.streak != 1 else ''}" for streak in result])
@@ -64,7 +70,7 @@ class ReportModal(Modal, title="Recruitment Report"):
             )
             return
 
-        result = await self.bot.db.get_telegrams(start_time, end_time, interaction.channel_id)
+        result = await self.bot.db.get_telegrams(start_time, end_time, channel_id)
 
         if report_type == "count_only":
             resp = "\n".join([f"{recruiter.nation}: {recruiter.count}" for recruiter in result])
