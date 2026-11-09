@@ -309,9 +309,20 @@ class RecruitView(View):
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, _item: discord.ui.Item):
         if isinstance(error, EmptyQueue):
-            await interaction.response.send_message("the queue is empty", ephemeral=True)
+            await interaction.response.send_message("The queue is empty", ephemeral=True)
         elif isinstance(error, NotRegistered):
-            await interaction.response.send_message("you must be registered to recruit", ephemeral=True)
+            await interaction.response.send_message("You must be registered to recruit", ephemeral=True)
+        elif isinstance(error, ActiveSessionError):
+            await interaction.response.send_message(
+                "You have an active session — check your DMs for the Recruit prompt instead of using this button, "
+                "or use the **Session** button here to modify/end your session",
+                ephemeral=True,
+            )
+        elif isinstance(error, LastRecruitmentTooRecent):
+            await interaction.response.send_message(
+                f"You can recruit again in {error.reset_in:.0f} seconds",
+                ephemeral=True,
+            )
         else:
             logger.error(error)
             await interaction.response.send_message("an unexpected error occurred, please contact a bot administrator", ephemeral=True)
