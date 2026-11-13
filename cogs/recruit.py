@@ -312,6 +312,11 @@ class RecruitView(View):
             await interaction.response.send_message("the queue is empty", ephemeral=True)
         elif isinstance(error, NotRegistered):
             await interaction.response.send_message("you must be registered to recruit", ephemeral=True)
+        elif isinstance(error, ActiveSessionError):
+            await interaction.response.send_message(
+                "you have an active recruitment session; please check your DMs for the recruitment prompt, or use the Session button to modify or end your session",
+                ephemeral=True,
+            )
         else:
             logger.error(error)
             await interaction.response.send_message("an unexpected error occurred, please contact a bot administrator", ephemeral=True)
