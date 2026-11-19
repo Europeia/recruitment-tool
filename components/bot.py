@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 import aiomysql
@@ -10,7 +10,6 @@ from components.database import Database
 from components.errors import LastRecruitmentTooRecent, NotRegistered
 from components.ns_client import NSClient
 from components.queue import QueueManager
-from components.recruiter import Recruiter
 from components.session import SessionManager
 
 logger = logging.getLogger("main")
@@ -64,7 +63,7 @@ class Bot(commands.Bot):
             await self.load_extension(f"cogs.{cog}")
             logger.debug("loaded cog: %s", cog)
 
-    async def get_recruiter_id(self, user: discord.User, channel_id: int) -> Optional[int]:
+    async def get_recruiter_id(self, user: discord.User | discord.Member, channel_id: int) -> Optional[int]:
         row = await self._db.fetch_one(
             """SELECT users.id
                FROM users
@@ -77,7 +76,7 @@ class Bot(commands.Bot):
 
         return row[0] if row else None
 
-    async def get_recruiter(self, user: discord.User, channel_id: int):
+    async def get_recruiter(self, user: discord.User | discord.Member, channel_id: int):
         recruiter = await self._db.get_recruiter(user.id, channel_id)
 
         if not recruiter:
@@ -85,7 +84,7 @@ class Bot(commands.Bot):
 
         return recruiter
 
-    async def create_recruitment_response(self, user: discord.User, channel_id: int):
+    async def create_recruitment_response(self, user: discord.User | discord.Member, channel_id: int):
         from cogs.recruit import TelegramView
 
         session = self._session_manager.get_session_by_id(user.id)
