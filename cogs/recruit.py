@@ -378,12 +378,8 @@ class RecruitmentCog(commands.Cog):
         if not guild:
             raise app_commands.AppCommandError("command must be run in a server")
 
-        async with self.bot.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("SELECT id FROM whitelist WHERE serverId = %s;", (guild.id,))
-
-                if not await cur.fetchone():
-                    raise WhitelistError(interaction.user, guild)
+        if not await self.bot.recruitment_channel_repo.allow_server_registration(guild.id):
+            raise WhitelistError(interaction.user, guild)
 
         await interaction.response.send_modal(RegisterRecruitmentChannelModal(self.bot))
 

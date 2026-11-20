@@ -101,3 +101,9 @@ class RecruitmentChannelRepository(DatabaseConnection):
             """DELETE FROM exceptions WHERE channelId = (SELECT id FROM recruitment_channels WHERE channelId = %s) AND region = %s;""",
             (channel_id, region),
         )
+
+    async def allow_server_registration(self, server_id: int) -> bool:
+        """check if a server is allowed to register recruitment channels"""
+        result = await self._fetch_one("SELECT id FROM whitelist WHERE serverId = %s;", (server_id,))
+
+        return result is not None
