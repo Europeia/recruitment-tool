@@ -1,13 +1,11 @@
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 import aiomysql
 import discord
 from discord.ext import commands
 
-from components.database import Database
-from components.errors import LastRecruitmentTooRecent, NotRegistered
+from components.errors import LastRecruitmentTooRecent, NotRegistered, NationNotFound
 from components.ns_client import NSClient
 from components.queue import QueueManager
 from components.session import SessionManager
@@ -17,14 +15,6 @@ logger = logging.getLogger("main")
 
 
 class Bot(commands.Bot):
-    @property
-    def pool(self) -> aiomysql.Pool:
-        return self._pool
-
-    @property
-    def db(self) -> Database:
-        return self._db
-
     @property
     def recruitment_channel_repo(self) -> RecruitmentChannelRepository:
         return self._recruitment_channel_repo
@@ -51,11 +41,9 @@ class Bot(commands.Bot):
 
         super().__init__(command_prefix="!", intents=intents)
 
-        self._pool = pool
-        self._db = Database(pool)
-        self._recruiter_repo = RecruiterRepository(self._pool)
-        self._recruitment_channel_repo = RecruitmentChannelRepository(self._pool)
-        self._report_repo = ReportRepository(self._pool)
+        self._recruiter_repo = RecruiterRepository(pool)
+        self._recruitment_channel_repo = RecruitmentChannelRepository(pool)
+        self._report_repo = ReportRepository(pool)
         self._ns = ns
         self._queue_list = ql
         self._session_manager = SessionManager()
