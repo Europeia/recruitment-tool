@@ -44,7 +44,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
             logger.warning("_retrieve_recruitment_message: could not resolve channel with id %d", channel_id)
             return None
 
-        message_id = await self.bot.db.get_recruitment_message_id(channel_id)
+        message_id = await self.bot.recruitment_channel_repo.get_recruitment_message_id(channel_id)
 
         if not message_id:
             logger.warning("_retrieve_recruitment_message: could not get message id from database for channel with id %d", channel_id)
@@ -61,7 +61,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
     async def _reactivate_recruitment_channel(self, channel: discord.TextChannel | discord.Thread) -> str:
         # check if channel is registered but not loaded
         if not self.bot.queue_manager.has_channel(channel.id):
-            channel_whitelist = await self.bot.db.get_channel_whitelist(channel.id)
+            channel_whitelist = await self.bot.recruitment_channel_repo.get_whitelist(channel.id)
 
             self.bot.queue_manager.add_channel(channel.id, channel_whitelist)
 
@@ -71,9 +71,9 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         if not message:
             message = await channel.send(view=RecruitView(self.bot))
 
-        await self.bot.db.update_recruitment_message_id(channel.id, message.id)
+        await self.bot.recruitment_channel_repo.update_recruitment_message_id(channel.id, message.id)
 
-        await self.bot.db.enable_recruitment_channel(channel.id)
+        await self.bot.recruitment_channel_repo.enable(channel.id)
 
         return "Reregistered channel"
 
@@ -81,8 +81,8 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         recruitment_message = await channel.send(view=RecruitView(self.bot))
 
         try:
-            await self.bot.db.register_recruitment_channel(channel.guild.id, channel.id, recruitment_message.id)
-            await self.bot.db.add_to_channel_whitelist(channel.id, region)
+            await self.bot.recruitment_channel_repo.register(channel.guild.id, channel.id, recruitment_message.id)
+            await self.bot.recruitment_channel_repo.add_region_to_whitelist(channel.id, region)
 
             self.bot.queue_manager.add_channel(channel.id, [region])
         except Exception as e:
@@ -103,7 +103,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
 
         region = self.region.component.value.strip().lower().replace(" ", "_")
 
-        is_registered = await self.bot.db.is_registered_recruitment_channel(channel.id)
+        is_registered = await self.bot.recruitment_channel_repo.is_registered(channel.id)
 
         if not is_registered:
             message = await self._register_recruitment_channel(channel, region)
@@ -497,7 +497,7 @@ class RecruitmentCog(commands.Cog):
     @commands.command(name="disable", description="Disable a recruitment channel by ID")
     @commands.check(is_global_admin_text)
     async def disable(self, ctx: commands.Context, channel_id: int):
-        message_id = await self.bot.db.deactivate_recruitment_channel(channel_id)
+        message_id = await self.bot.recruitment_channel_repo.disable(channel_id)
 
         if message_id is None:
             await ctx.reply(f"Channel {channel_id} is not a registered recruitment channel.")
