@@ -58,7 +58,7 @@ class ReportModal(Modal, title="Recruitment Report"):
             return
 
         if report_type == "streaks":
-            result = await self.bot.db.get_streaks(start_time, end_time, channel_id)
+            result = await self.bot.report_repo.get_streaks(start_time, end_time, channel_id)
 
             if result:
                 resp = "\n".join([f"{streak.nation}: {streak.streak} day{'s' if streak.streak != 1 else ''}" for streak in result])
@@ -70,7 +70,7 @@ class ReportModal(Modal, title="Recruitment Report"):
             )
             return
 
-        result = await self.bot.db.get_telegrams(start_time, end_time, channel_id)
+        result = await self.bot.report_repo.get_telegrams(start_time, end_time, channel_id)
 
         if report_type == "count_only":
             resp = "\n".join([f"{recruiter.nation}: {recruiter.count}" for recruiter in result])
