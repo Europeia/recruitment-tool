@@ -25,6 +25,40 @@ class RecruitmentChannelRepository(DatabaseConnection):
 
         return [row[0] for row in result]
 
+    async def add_to_channel_whitelist(self, channel_id: int, region: str):
+        await self._execute(
+            """INSERT INTO exceptions (channelId, region) VALUES ((SELECT id FROM recruitment_channels WHERE channelId = %s), %s);""",
+            (channel_id, region),
+        )
+
+    async def remove_from_channel_whitelist(self, channel_id: int, region: str):
+        await self._execute(
+            """DELETE FROM exceptions WHERE channelId = (SELECT id FROM recruitment_channels WHERE channelId = %s) AND region = %s;""",
+            (channel_id, region),
+        )
+
+    async def get_global_whitelist(self) -> List[str]:
+        result = await self._fetch_all("SELECT region FROM global_exceptions;")
+
+        return [row[0] for row in result]
+
+    async def add_to_global_whitelist(self, region: str):
+        await self._execute("INSERT INTO global_exceptions (region) VALUES (%s);", (region,))
+
+    async def remove_from_global_whitelist(self, region: str):
+        await self._execute("DELETE FROM global_exceptions WHERE region = %s;", (region,))
+
+    async def get_filters(self) -> List[str]:
+        result = await self._fetch_all("SELECT pattern FROM filters;")
+
+        return [row[0] for row in result]
+
+    async def add_filter(self, pattern: str):
+        await self._execute("INSERT INTO filters (pattern) VALUES (%s);", (pattern,))
+
+    async def remove_filter(self, pattern: str):
+        await self._execute("DELETE FROM filters WHERE pattern = %s;", (pattern,))
+
     async def is_registered(self, channel_id: int) -> bool:
         """check if a channel is registered for recruitment"""
         result = await self._fetch_one("""SELECT disabled FROM recruitment_channels WHERE channelId = %s;""", (channel_id,))
