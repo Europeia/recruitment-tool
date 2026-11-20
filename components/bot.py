@@ -11,6 +11,7 @@ from components.errors import LastRecruitmentTooRecent, NotRegistered
 from components.ns_client import NSClient
 from components.queue import QueueManager
 from components.session import SessionManager
+from src.db import RecruiterRepository
 
 logger = logging.getLogger("main")
 
@@ -44,6 +45,7 @@ class Bot(commands.Bot):
 
         self._pool = pool
         self._db = Database(pool)
+        self._recruiter_repo = RecruiterRepository(self._pool)
         self._ns = ns
         self._queue_list = ql
         self._session_manager = SessionManager()
@@ -77,7 +79,7 @@ class Bot(commands.Bot):
         return row[0] if row else None
 
     async def get_recruiter(self, user: discord.User | discord.Member, channel_id: int):
-        recruiter = await self._db.get_recruiter(user.id, channel_id)
+        recruiter = await self._recruiter_repo.get_recruiter(user.id, channel_id)
 
         if not recruiter:
             raise NotRegistered(user)
@@ -106,7 +108,7 @@ class Bot(commands.Bot):
         if session is not None:
             session.last_activity = current_time
         recruiter.record_recruitment(current_time, len(nations))
-        await self._db.record_recruitment(current_time, recruiter, len(nations))
+        await self._recruiter_repo.record_recruitment(current_time, recruiter, len(nations))
 
         embed = discord.Embed(title="Recruit", color=int("2d0001", 16))
         embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
