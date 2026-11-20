@@ -1,5 +1,5 @@
 import aiomysql
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from .model import DatabaseConnection
 
@@ -7,6 +7,11 @@ from .model import DatabaseConnection
 class RecruitmentChannelRepository(DatabaseConnection):
     def __init__(self, pool: aiomysql.Pool):
         super().__init__(pool)
+
+    async def get_all_recruitment_channels(self) -> List[Tuple[int, int]]:
+        result = await self._fetch_all("""SELECT serverId, channelId FROM recruitment_channels WHERE disabled = FALSE;""")
+
+        return [(row[0], row[1]) for row in result]
 
     async def get_whitelist(self, channel_id: int) -> List[str]:
         result = await self._fetch_all(

@@ -63,7 +63,7 @@ class Bot(commands.Bot):
     async def setup_hook(self):
         import cogs.recruit
 
-        recruitment_views = await self._db.fetch_all("SELECT channelId, messageId FROM recruitment_channels WHERE disabled = FALSE;")
+        recruitment_views = await self._recruitment_channel_repo.get_all_recruitment_channels()
 
         for _, message_id in recruitment_views:
             self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
