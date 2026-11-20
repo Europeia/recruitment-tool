@@ -9,6 +9,23 @@ class RecruiterRepository(DatabaseConnection):
     def __init__(self, pool: aiomysql.Pool):
         super().__init__(pool)
 
+    async def get_recruiter_id(self, discord_user_id: int, channel_id: int) -> int | None:
+        result = await self._fetch_one(
+            """SELECT users.id
+                   FROM users
+                            JOIN recruitment_channels ON recruitment_channels.id = users.channelId
+                   WHERE users.discordId = %s
+                     AND recruitment_channels.channelId = %s
+                     AND recruitment_channels.disabled = FALSE;
+                """,
+            (discord_user_id, channel_id),
+        )
+
+        if not result:
+            return None
+
+        return result[0]
+
     async def get_recruiter(self, user_id: int, channel_id: int) -> Recruiter | None:
         row = await self._fetch_one(
             """SELECT users.id, nation, recruitTemplate, lastRecruitmentAt, foundedTime
@@ -32,6 +49,20 @@ class RecruiterRepository(DatabaseConnection):
             channel_id=channel_id,
             last_recruitment_at=row[3].replace(tzinfo=timezone.utc) if row[3] else None,
             founded_time=row[4].replace(tzinfo=timezone.utc),
+        )
+
+    async def add_recruiter(self, user_id: int, nation: str, template: str, session_length: int, founded_time: datetime, channel_id: int):
+        await self._execute(
+            "INSERT INTO users (discordId, nation, recruitTemplate, sessionLength, foundedTime, "
+            "channelId) VALUES (%s, %s, %s, %s, %s, (SELECT id FROM recruitment_channels WHERE "
+            "channelId = %s));",
+            (user_id, nation, template, session_length, founded_time, channel_id),
+        )
+
+    async def update_recruiter(self, recruiter_id: int, nation: str, template: str, session_length: int, founded_time: datetime):
+        await self._execute(
+            "UPDATE users SET nation = %s, recruitTemplate = %s, sessionLength = %s, foundedTime = %s WHERE id = %s;",
+            (nation, template, session_length, founded_time, recruiter_id),
         )
 
     async def _update_telegram_count(self, recruiter: Recruiter, nation_count: int):
