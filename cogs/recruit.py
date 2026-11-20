@@ -152,33 +152,12 @@ class RegisterRecruiterModal(Modal, title="Registration"):
             if session_length < 45 or session_length > 600:
                 raise Exception("Session length must be between 45 and 600 seconds")
 
-        try:
-            founded_time = datetime.fromtimestamp(int((await self.bot.ns.get(nation=nation, q="foundedtime")).find("FOUNDEDTIME").text))
-        except AttributeError:
-            raise NationNotFound(interaction.user, nation)
-
         if interaction.channel_id is None:
             raise ValueError("interaction.channel_id can't be none")
 
-        recruiter_id = await self.bot.get_recruiter_id(interaction.user, interaction.channel_id)
+        await self.bot.add_or_update_recruiter(interaction.user, nation, template, session_length, interaction.channel_id)
 
-        async with self.bot.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                if recruiter_id:
-                    await cur.execute(
-                        "UPDATE users SET nation = %s, recruitTemplate = %s, sessionLength = %s, foundedTime = %s WHERE id = %s;",
-                        (nation, template, session_length, founded_time, recruiter_id),
-                    )
-                else:
-                    await cur.execute(
-                        "INSERT INTO users (discordId, nation, recruitTemplate, sessionLength, foundedTime, "
-                        "channelId) VALUES (%s, %s, %s, %s, %s, (SELECT id FROM recruitment_channels WHERE "
-                        "channelId = %s));",
-                        (interaction.user.id, nation, template, session_length, founded_time, interaction.channel_id),
-                    )
-
-                # await conn.commit()
-                await interaction.response.send_message("Registration complete!", ephemeral=True, delete_after=10)
+        await interaction.response.send_message("Registration complete!", ephemeral=True, delete_after=10)
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
         logger.error(error)

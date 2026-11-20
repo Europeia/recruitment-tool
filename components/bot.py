@@ -75,18 +75,20 @@ class Bot(commands.Bot):
             await self.load_extension(f"cogs.{cog}")
             logger.debug("loaded cog: %s", cog)
 
-    async def get_recruiter_id(self, user: discord.User | discord.Member, channel_id: int) -> Optional[int]:
-        row = await self._db.fetch_one(
-            """SELECT users.id
-               FROM users
-                        JOIN recruitment_channels ON recruitment_channels.id = users.channelId
-               WHERE users.discordId = %s
-                 AND recruitment_channels.channelId = %s
-                 AND recruitment_channels.disabled = FALSE;""",
-            (user.id, channel_id),
-        )
+    async def add_or_update_recruiter(
+        self, user: discord.User | discord.Member, nation: str, template: str, session_length: int, channel_id: int
+    ):
+        try:
+            founded_time = datetime.fromtimestamp(int((await self._ns.get(nation=nation, q="foundedtime")).find("FOUNDEDTIME").text))
+        except AttributeError, ValueError:
+            raise NationNotFound(user, nation)
 
-        return row[0] if row else None
+        recruiter_id = await self._recruiter_repo.get_recruiter_id(user.id, channel_id)
+
+        if recruiter_id:
+            await self._recruiter_repo.update_recruiter(recruiter_id, nation, template, session_length, founded_time)
+        else:
+            await self._recruiter_repo.add_recruiter(user.id, nation, template, session_length, founded_time, channel_id)
 
     async def get_recruiter(self, user: discord.User | discord.Member, channel_id: int):
         recruiter = await self._recruiter_repo.get_recruiter(user.id, channel_id)
