@@ -13,7 +13,7 @@ class RecruitmentChannelRepository(DatabaseConnection):
 
         return [(row[0], row[1]) for row in result]
 
-    async def get_whitelist(self, channel_id: int) -> List[str]:
+    async def get_channel_whitelist(self, channel_id: int) -> List[str]:
         result = await self._fetch_all(
             """SELECT region
                     FROM exceptions

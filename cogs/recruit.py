@@ -61,7 +61,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
     async def _reactivate_recruitment_channel(self, channel: discord.TextChannel | discord.Thread) -> str:
         # check if channel is registered but not loaded
         if not self.bot.queue_manager.has_channel(channel.id):
-            channel_whitelist = await self.bot.recruitment_channel_repo.get_whitelist(channel.id)
+            channel_whitelist = await self.bot.recruitment_channel_repo.get_channel_whitelist(channel.id)
 
             self.bot.queue_manager.add_channel(channel.id, channel_whitelist)
 
