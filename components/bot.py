@@ -193,18 +193,10 @@ class Bot(commands.Bot):
 
         embed.add_field(name="Active Sessions", value=formatted_sessions, inline=False)
 
-        row = await self._db.fetch_one(
-            "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", (channel_id,)
-        )
+        message_id = await self._recruitment_channel_repo.get_recruitment_message_id(channel_id)
 
-        if row is None:
+        if message_id is None:
             logger.warning("no active recruitment channel row for channel %d", channel_id)
-            return
-
-        message_id = row[0]
-
-        if type(message_id) is not int:
-            logger.warning("invalid type for message_id: %d", type(message_id))
             return
 
         channel = await self.resolve_channel(channel_id)
@@ -233,13 +225,9 @@ class Bot(commands.Bot):
         logger.info("updating all status embeds")
         self.queue_manager.prune()
 
-        channels = await self._db.fetch_all("SELECT channelId FROM recruitment_channels WHERE disabled = FALSE;")
+        channels = await self._recruitment_channel_repo.get_all_recruitment_channels()
 
-        for channel in channels:
-            if type(channel_id := channel[0]) is not int:
-                logger.warning("Invalid type for channel_id: %s", type(channel_id))
-                continue
-
+        for _, channel_id in channels:
             try:
                 await self.update_status_embed(channel_id)
             except Exception as e:
