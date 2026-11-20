@@ -11,7 +11,7 @@ from components.errors import LastRecruitmentTooRecent, NotRegistered
 from components.ns_client import NSClient
 from components.queue import QueueManager
 from components.session import SessionManager
-from src.db import RecruiterRepository
+from src.db import RecruiterRepository, RecruitmentChannelRepository, ReportRepository
 
 logger = logging.getLogger("main")
 
@@ -24,6 +24,14 @@ class Bot(commands.Bot):
     @property
     def db(self) -> Database:
         return self._db
+
+    @property
+    def recruitment_channel_repo(self) -> RecruitmentChannelRepository:
+        return self._recruitment_channel_repo
+
+    @property
+    def report_repo(self) -> ReportRepository:
+        return self._report_repo
 
     @property
     def ns(self) -> NSClient:
@@ -46,6 +54,8 @@ class Bot(commands.Bot):
         self._pool = pool
         self._db = Database(pool)
         self._recruiter_repo = RecruiterRepository(self._pool)
+        self._recruitment_channel_repo = RecruitmentChannelRepository(self._pool)
+        self._report_repo = ReportRepository(self._pool)
         self._ns = ns
         self._queue_list = ql
         self._session_manager = SessionManager()
