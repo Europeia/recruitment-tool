@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 
 import discord
 from discord import app_commands
@@ -9,7 +8,7 @@ from discord.ui import Modal, View
 from cogs.report import ReportModal
 from components.bot import Bot
 from components.checks import is_global_admin, is_global_admin_text
-from components.errors import ActiveSessionError, NationNotFound, WhitelistError, EmptyQueue, NotRegistered
+from components.errors import ActiveSessionError, WhitelistError, EmptyQueue, NotRegistered
 from components.session import Session
 
 logger = logging.getLogger("main")
