@@ -37,6 +37,8 @@ class Bot(commands.Bot):
         return self._session_manager
 
     def __init__(self, ns: NSClient, ql: QueueManager, pool: aiomysql.Pool):
+        import cogs.recruit
+
         intents = discord.Intents.default()
 
         super().__init__(command_prefix="!", intents=intents)
@@ -47,14 +49,10 @@ class Bot(commands.Bot):
         self._ns = ns
         self._queue_list = ql
         self._session_manager = SessionManager()
+        self._recruit_view = cogs.recruit.RecruitView(self)
 
     async def setup_hook(self):
-        import cogs.recruit
-
-        recruitment_views = await self._recruitment_channel_repo.get_all_recruitment_channels()
-
-        for _, message_id in recruitment_views:
-            self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
+        self.add_view(self._recruit_view)
 
         default_cogs = ["base", "recruit", "report", "error_handler", "session"]
 
@@ -202,10 +200,8 @@ class Bot(commands.Bot):
             logger.warning("unspecified error while retrieving message %d: %s", message_id, e)
             return
 
-        from cogs.recruit import RecruitView
-
         try:
-            await message.edit(embed=embed, view=RecruitView(self))
+            await message.edit(embed=embed, view=self._recruit_view)
         except discord.HTTPException as e:
             logger.warning("Failed to edit message %d in channel %d: %s", message_id, channel_id, e)
 
