@@ -1,28 +1,27 @@
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 import aiomysql
 import discord
 from discord.ext import commands
 
-from components.database import Database
-from components.errors import LastRecruitmentTooRecent, NotRegistered
+from components.errors import LastRecruitmentTooRecent, NotRegistered, NationNotFound
 from components.ns_client import NSClient
 from components.queue import QueueManager
 from components.session import SessionManager
+from src.db import RecruiterRepository, RecruitmentChannelRepository, ReportRepository
 
 logger = logging.getLogger("main")
 
 
 class Bot(commands.Bot):
     @property
-    def pool(self) -> aiomysql.Pool:
-        return self._pool
+    def recruitment_channel_repo(self) -> RecruitmentChannelRepository:
+        return self._recruitment_channel_repo
 
     @property
-    def db(self) -> Database:
-        return self._db
+    def report_repo(self) -> ReportRepository:
+        return self._report_repo
 
     @property
     def ns(self) -> NSClient:
@@ -38,23 +37,22 @@ class Bot(commands.Bot):
         return self._session_manager
 
     def __init__(self, ns: NSClient, ql: QueueManager, pool: aiomysql.Pool):
+        import cogs.recruit
+
         intents = discord.Intents.default()
 
         super().__init__(command_prefix="!", intents=intents)
 
-        self._pool = pool
-        self._db = Database(pool)
+        self._recruiter_repo = RecruiterRepository(pool)
+        self._recruitment_channel_repo = RecruitmentChannelRepository(pool)
+        self._report_repo = ReportRepository(pool)
         self._ns = ns
         self._queue_list = ql
         self._session_manager = SessionManager()
+        self._recruit_view = cogs.recruit.RecruitView(self)
 
     async def setup_hook(self):
-        import cogs.recruit
-
-        recruitment_views = await self._db.fetch_all("SELECT channelId, messageId FROM recruitment_channels WHERE disabled = FALSE;")
-
-        for _, message_id in recruitment_views:
-            self.add_view(cogs.recruit.RecruitView(self), message_id=message_id)
+        self.add_view(self._recruit_view)
 
         default_cogs = ["base", "recruit", "report", "error_handler", "session"]
 
@@ -63,21 +61,23 @@ class Bot(commands.Bot):
             await self.load_extension(f"cogs.{cog}")
             logger.debug("loaded cog: %s", cog)
 
-    async def get_recruiter_id(self, user: discord.User | discord.Member, channel_id: int) -> Optional[int]:
-        row = await self._db.fetch_one(
-            """SELECT users.id
-               FROM users
-                        JOIN recruitment_channels ON recruitment_channels.id = users.channelId
-               WHERE users.discordId = %s
-                 AND recruitment_channels.channelId = %s
-                 AND recruitment_channels.disabled = FALSE;""",
-            (user.id, channel_id),
-        )
+    async def add_or_update_recruiter(
+        self, user: discord.User | discord.Member, nation: str, template: str, session_length: int, channel_id: int
+    ):
+        try:
+            founded_time = datetime.fromtimestamp(int((await self._ns.get(nation=nation, q="foundedtime")).find("FOUNDEDTIME").text))
+        except AttributeError, ValueError:
+            raise NationNotFound(user, nation)
 
-        return row[0] if row else None
+        recruiter_id = await self._recruiter_repo.get_recruiter_id(user.id, channel_id)
+
+        if recruiter_id:
+            await self._recruiter_repo.update_recruiter(recruiter_id, nation, template, session_length, founded_time)
+        else:
+            await self._recruiter_repo.add_recruiter(user.id, nation, template, session_length, founded_time, channel_id)
 
     async def get_recruiter(self, user: discord.User | discord.Member, channel_id: int):
-        recruiter = await self._db.get_recruiter(user.id, channel_id)
+        recruiter = await self._recruiter_repo.get_recruiter(user.id, channel_id)
 
         if not recruiter:
             raise NotRegistered(user)
@@ -106,7 +106,7 @@ class Bot(commands.Bot):
         if session is not None:
             session.last_activity = current_time
         recruiter.record_recruitment(current_time, len(nations))
-        await self._db.record_recruitment(current_time, recruiter, len(nations))
+        await self._recruiter_repo.record_recruitment(current_time, recruiter, len(nations))
 
         embed = discord.Embed(title="Recruit", color=int("2d0001", 16))
         embed.add_field(name="Nations", value="\n".join([f"https://www.nationstates.net/nation={nation}" for nation in nations]))
@@ -179,18 +179,10 @@ class Bot(commands.Bot):
 
         embed.add_field(name="Active Sessions", value=formatted_sessions, inline=False)
 
-        row = await self._db.fetch_one(
-            "SELECT messageId FROM recruitment_channels WHERE channelId = %s AND disabled = FALSE;", (channel_id,)
-        )
+        message_id = await self._recruitment_channel_repo.get_recruitment_message_id(channel_id)
 
-        if row is None:
+        if message_id is None:
             logger.warning("no active recruitment channel row for channel %d", channel_id)
-            return
-
-        message_id = row[0]
-
-        if type(message_id) is not int:
-            logger.warning("invalid type for message_id: %d", type(message_id))
             return
 
         channel = await self.resolve_channel(channel_id)
@@ -208,10 +200,8 @@ class Bot(commands.Bot):
             logger.warning("unspecified error while retrieving message %d: %s", message_id, e)
             return
 
-        from cogs.recruit import RecruitView
-
         try:
-            await message.edit(embed=embed, view=RecruitView(self))
+            await message.edit(embed=embed, view=self._recruit_view)
         except discord.HTTPException as e:
             logger.warning("Failed to edit message %d in channel %d: %s", message_id, channel_id, e)
 
@@ -219,13 +209,9 @@ class Bot(commands.Bot):
         logger.info("updating all status embeds")
         self.queue_manager.prune()
 
-        channels = await self._db.fetch_all("SELECT channelId FROM recruitment_channels WHERE disabled = FALSE;")
+        channels = await self._recruitment_channel_repo.get_all_recruitment_channels()
 
-        for channel in channels:
-            if type(channel_id := channel[0]) is not int:
-                logger.warning("Invalid type for channel_id: %s", type(channel_id))
-                continue
-
+        for _, channel_id in channels:
             try:
                 await self.update_status_embed(channel_id)
             except Exception as e:

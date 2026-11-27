@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 
 import discord
 from discord import app_commands
@@ -9,7 +8,7 @@ from discord.ui import Modal, View
 from cogs.report import ReportModal
 from components.bot import Bot
 from components.checks import is_global_admin, is_global_admin_text
-from components.errors import ActiveSessionError, NationNotFound, WhitelistError, EmptyQueue, NotRegistered
+from components.errors import ActiveSessionError, WhitelistError, EmptyQueue, NotRegistered
 from components.session import Session
 
 logger = logging.getLogger("main")
@@ -44,7 +43,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
             logger.warning("_retrieve_recruitment_message: could not resolve channel with id %d", channel_id)
             return None
 
-        message_id = await self.bot.db.get_recruitment_message_id(channel_id)
+        message_id = await self.bot.recruitment_channel_repo.get_recruitment_message_id(channel_id)
 
         if not message_id:
             logger.warning("_retrieve_recruitment_message: could not get message id from database for channel with id %d", channel_id)
@@ -61,7 +60,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
     async def _reactivate_recruitment_channel(self, channel: discord.TextChannel | discord.Thread) -> str:
         # check if channel is registered but not loaded
         if not self.bot.queue_manager.has_channel(channel.id):
-            channel_whitelist = await self.bot.db.get_channel_whitelist(channel.id)
+            channel_whitelist = await self.bot.recruitment_channel_repo.get_channel_whitelist(channel.id)
 
             self.bot.queue_manager.add_channel(channel.id, channel_whitelist)
 
@@ -71,9 +70,9 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         if not message:
             message = await channel.send(view=RecruitView(self.bot))
 
-        await self.bot.db.update_recruitment_message_id(channel.id, message.id)
+        await self.bot.recruitment_channel_repo.update_recruitment_message_id(channel.id, message.id)
 
-        await self.bot.db.enable_recruitment_channel(channel.id)
+        await self.bot.recruitment_channel_repo.enable(channel.id)
 
         return "Reregistered channel"
 
@@ -81,8 +80,8 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
         recruitment_message = await channel.send(view=RecruitView(self.bot))
 
         try:
-            await self.bot.db.register_recruitment_channel(channel.guild.id, channel.id, recruitment_message.id)
-            await self.bot.db.add_to_channel_whitelist(channel.id, region)
+            await self.bot.recruitment_channel_repo.register(channel.guild.id, channel.id, recruitment_message.id)
+            await self.bot.recruitment_channel_repo.add_region_to_whitelist(channel.id, region)
 
             self.bot.queue_manager.add_channel(channel.id, [region])
         except Exception as e:
@@ -103,7 +102,7 @@ class RegisterRecruitmentChannelModal(Modal, title="Register Recruitment Channel
 
         region = self.region.component.value.strip().lower().replace(" ", "_")
 
-        is_registered = await self.bot.db.is_registered_recruitment_channel(channel.id)
+        is_registered = await self.bot.recruitment_channel_repo.is_registered(channel.id)
 
         if not is_registered:
             message = await self._register_recruitment_channel(channel, region)
@@ -152,33 +151,12 @@ class RegisterRecruiterModal(Modal, title="Registration"):
             if session_length < 45 or session_length > 600:
                 raise Exception("Session length must be between 45 and 600 seconds")
 
-        try:
-            founded_time = datetime.fromtimestamp(int((await self.bot.ns.get(nation=nation, q="foundedtime")).find("FOUNDEDTIME").text))
-        except AttributeError:
-            raise NationNotFound(interaction.user, nation)
-
         if interaction.channel_id is None:
             raise ValueError("interaction.channel_id can't be none")
 
-        recruiter_id = await self.bot.get_recruiter_id(interaction.user, interaction.channel_id)
+        await self.bot.add_or_update_recruiter(interaction.user, nation, template, session_length, interaction.channel_id)
 
-        async with self.bot.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                if recruiter_id:
-                    await cur.execute(
-                        "UPDATE users SET nation = %s, recruitTemplate = %s, sessionLength = %s, foundedTime = %s WHERE id = %s;",
-                        (nation, template, session_length, founded_time, recruiter_id),
-                    )
-                else:
-                    await cur.execute(
-                        "INSERT INTO users (discordId, nation, recruitTemplate, sessionLength, foundedTime, "
-                        "channelId) VALUES (%s, %s, %s, %s, %s, (SELECT id FROM recruitment_channels WHERE "
-                        "channelId = %s));",
-                        (interaction.user.id, nation, template, session_length, founded_time, interaction.channel_id),
-                    )
-
-                # await conn.commit()
-                await interaction.response.send_message("Registration complete!", ephemeral=True, delete_after=10)
+        await interaction.response.send_message("Registration complete!", ephemeral=True, delete_after=10)
 
     async def on_error(self, interation: discord.Interaction, error: Exception):
         logger.error(error)
@@ -399,12 +377,8 @@ class RecruitmentCog(commands.Cog):
         if not guild:
             raise app_commands.AppCommandError("command must be run in a server")
 
-        async with self.bot.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("SELECT id FROM whitelist WHERE serverId = %s;", (guild.id,))
-
-                if not await cur.fetchone():
-                    raise WhitelistError(interaction.user, guild)
+        if not await self.bot.recruitment_channel_repo.allow_server_registration(guild.id):
+            raise WhitelistError(interaction.user, guild)
 
         await interaction.response.send_modal(RegisterRecruitmentChannelModal(self.bot))
 
@@ -497,7 +471,7 @@ class RecruitmentCog(commands.Cog):
     @commands.command(name="disable", description="Disable a recruitment channel by ID")
     @commands.check(is_global_admin_text)
     async def disable(self, ctx: commands.Context, channel_id: int):
-        message_id = await self.bot.db.deactivate_recruitment_channel(channel_id)
+        message_id = await self.bot.recruitment_channel_repo.disable(channel_id)
 
         if message_id is None:
             await ctx.reply(f"Channel {channel_id} is not a registered recruitment channel.")

@@ -15,10 +15,10 @@ import httpx
 from httpx_sse import ServerSentEvent, connect_sse
 from stamina import retry
 
-from components.database import Database
 from components.errors import EmptyQueue
 from models.nation import Nation
 from models.events import Event, FoundingEvent, MoveEvent
+from src.db import RecruitmentChannelRepository
 
 logger = logging.getLogger("main")
 
@@ -112,7 +112,6 @@ class Queue:
 class QueueManager(AbstractAsyncContextManager):
     _whitelist: List[str]
     """list of regions from which spawns will be ignored globally. moves to these regions are also purged from all queues"""
-    _pool: aiomysql.Pool
     _queues: dict[int, Queue] = field(default_factory=dict)
     _queue_lock: threading.Lock
     _nation_filter: Filter
@@ -123,8 +122,7 @@ class QueueManager(AbstractAsyncContextManager):
 
     def __init__(self, pool: aiomysql.Pool):
         self._whitelist = []
-        self._db = Database(pool)
-        self._pool = pool
+        self._recruitment_channel_repo = RecruitmentChannelRepository(pool)
         self._queues = {}
         self._queue_lock = threading.Lock()
         self._nation_filter = Filter()
@@ -136,36 +134,19 @@ class QueueManager(AbstractAsyncContextManager):
         return f"<QueueList queues={self._queues}>"
 
     async def _init_channels(self):
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("SELECT channelId FROM recruitment_channels WHERE disabled = FALSE;")
-                channels: List[int] = [channel[0] for channel in await cur.fetchall()]
+        channels = await self._recruitment_channel_repo.get_all_recruitment_channels()
 
-                for channel in channels:
-                    await cur.execute(
-                        """SELECT region
-                           FROM exceptions
-                                    JOIN recruitment_channels ON recruitment_channels.id = exceptions.channelId
-                           WHERE recruitment_channels.channelId = %s;""",
-                        (channel,),
-                    )
+        for _, channel_id in channels:
+            regions = await self._recruitment_channel_repo.get_channel_whitelist(channel_id)
+            self.add_channel(channel_id, regions)
 
-                    regions = [region[0] for region in await cur.fetchall()]
-
-                    self.add_channel(channel, regions)
-
-                await cur.execute("SELECT region FROM global_exceptions;")
-                regions: List[str] = [line[0] for line in await cur.fetchall()]
-
-                self._whitelist = regions
+        self._whitelist = await self._recruitment_channel_repo.get_global_whitelist()
 
     async def _init_filters(self):
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("SELECT pattern FROM filters;")
+        patterns = await self._recruitment_channel_repo.get_filters()
 
-                with self._filter_lock:
-                    self._filters = [re.compile(resp[0]) for resp in await cur.fetchall()]
+        with self._filter_lock:
+            self._filters = [re.compile(pattern) for pattern in patterns]
 
     async def __aenter__(self):
         await self._init_channels()
@@ -251,20 +232,14 @@ class QueueManager(AbstractAsyncContextManager):
         region = region.lower().replace(" ", "_")
 
         if region not in self._whitelist:
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("INSERT INTO global_exceptions (region) VALUES (%s);", (region,))
-
+            await self._recruitment_channel_repo.add_to_global_whitelist(region)
             self._whitelist.append(region)
 
     async def remove_from_global_whitelist(self, region: str):
         region = region.lower().replace(" ", "_")
 
         if region in self._whitelist:
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("DELETE FROM global_exceptions WHERE region = %s;", (region,))
-
+            await self._recruitment_channel_repo.remove_from_global_whitelist(region)
             self._whitelist.remove(region)
 
     def _get_channel_queue(self, channel_id: int) -> Queue:
@@ -279,14 +254,7 @@ class QueueManager(AbstractAsyncContextManager):
         if region in self._get_channel_queue(channel_id).whitelist:
             return
 
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    """INSERT INTO exceptions (channelId, region)
-                       VALUES ((SELECT id FROM recruitment_channels WHERE channelId = %s), %s);""",
-                    (channel_id, region),
-                )
-
+        await self._recruitment_channel_repo.add_to_channel_whitelist(channel_id, region)
         self._get_channel_queue(channel_id).whitelist.append(region)
 
     async def remove_from_channel_whitelist(self, channel_id: int, region: str):
@@ -295,18 +263,7 @@ class QueueManager(AbstractAsyncContextManager):
         if region not in self._get_channel_queue(channel_id).whitelist:
             return
 
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    """DELETE
-                       FROM exceptions
-                       WHERE region = %s
-                         AND channelId = (SELECT id
-                                          FROM recruitment_channels
-                                          WHERE channelId = %s);""",
-                    (region, channel_id),
-                )
-
+        await self._recruitment_channel_repo.remove_from_channel_whitelist(channel_id, region)
         self._get_channel_queue(channel_id).whitelist.remove(region)
 
     def list_whitelist(self, channel_id: int):
@@ -326,12 +283,7 @@ class QueueManager(AbstractAsyncContextManager):
             with self._filter_lock:
                 self._filters.append(new_filter)
 
-            await self._db_insert_filter(pattern)
-
-    async def _db_insert_filter(self, pattern: str):
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("INSERT INTO filters (pattern) VALUES (%s);", (pattern,))
+            await self._recruitment_channel_repo.add_filter(pattern)
 
     async def remove_global_filter(self, pattern: str):
         try:
@@ -347,12 +299,7 @@ class QueueManager(AbstractAsyncContextManager):
         with self._filter_lock:
             self._filters.remove(filter_to_remove)
 
-        await self._db_remove_filter(pattern)
-
-    async def _db_remove_filter(self, pattern: str):
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("DELETE FROM filters WHERE pattern = %s;", (pattern,))
+        await self._recruitment_channel_repo.remove_filter(pattern)
 
     def _is_filtered(self, nation: str) -> bool:
         with self._filter_lock:
